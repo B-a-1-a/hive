@@ -1,4 +1,4 @@
-# Browser Agent
+# Hive
 
 An open-source desktop agent orchestrator for browser and file work.
 
@@ -20,7 +20,7 @@ The repository's existing [AGPL-3.0 license](LICENSE) is retained. T3 Code's [MI
 
 **Phase 1 is owned by Bala and must finish before parallel contributor work starts.** It will establish and verify the inherited desktop app, provider sign-in and session lifecycle, durable orchestration and delegation, queues and schedules, built-in browser profiles and takeover, permissions, local files and artifacts, recovery, application identity and update configuration, and the full build/test pipeline.
 
-Start with the [PRD](docs/product/PRD.md) and [implementation tracker](https://github.com/B-a-1-a/browser-agent/issues/19). [Step 1](https://github.com/B-a-1-a/browser-agent/issues/1) is assigned to Bala. Contributor implementation stays blocked until Bala closes it with core validation evidence and announces handoff. Each issue defines its dependencies, ownership boundary, scope exclusions, acceptance criteria, and verification evidence.
+Start with the [PRD](docs/product/PRD.md) and [implementation tracker](https://github.com/B-a-1-a/hive/issues/19). [Step 1](https://github.com/B-a-1-a/hive/issues/1) is assigned to Bala. Contributor implementation stays blocked until Bala closes it with core validation evidence and announces handoff. Each issue defines its dependencies, ownership boundary, scope exclusions, acceptance criteria, and verification evidence.
 
 The imported toolchain is Node **26.12.1** and pnpm **12.14.0**. See the [upstream development guide](docs/operations/development.md) for the inherited setup commands. Upstream release and deployment workflows are archived under `.github/upstream-workflows/t3-v0.1.2/`; they are not active in this repository.
 

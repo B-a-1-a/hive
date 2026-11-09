@@ -3918,7 +3918,7 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
     description:
       "T3 Code is an open-source desktop app for coding agents. Work with your existing agent subscriptions, review code changes, and run commands in your projects. Connect from desktop, web, or mobile to continue working remotely.",
     license: "AGPL-3.0-only",
-    homepage: "https://github.com/B-a-1-a/browser-agent",
+    homepage: "https://github.com/B-a-1-a/hive",
     author: "Browser Agent contributors",
     main: "apps/desktop/dist-electron/boot.cjs",
     build: yield* createBuildConfig(

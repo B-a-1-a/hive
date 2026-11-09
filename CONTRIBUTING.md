@@ -1,12 +1,12 @@
 # Contributing to Browser Agent
 
-Use the [PRD](docs/product/PRD.md) for product requirements and the [delivery tracker](https://github.com/B-a-1-a/browser-agent/issues/19) to find work. GitHub issues hold assignments, dependencies, decisions, and progress. PRs hold implementation and review evidence.
+Use the [PRD](docs/product/PRD.md) for product requirements and the [delivery tracker](https://github.com/B-a-1-a/hive/issues/19) to find work. GitHub issues hold assignments, dependencies, decisions, and progress. PRs hold implementation and review evidence.
 
 This guide applies to Browser Agent. The preserved [T3 contribution guide](CONTRIBUTING.upstream.md) is historical reference, not this project's contribution policy.
 
 ## Before contributors start
 
-Bala owns [Step One](https://github.com/B-a-1-a/browser-agent/issues/1). Contributor implementation stays blocked until Bala closes it with core validation evidence and announces handoff. A green provenance check or an installed app does not release that gate.
+Bala owns [Step One](https://github.com/B-a-1-a/hive/issues/1). Contributor implementation stays blocked until Bala closes it with core validation evidence and announces handoff. A green provenance check or an installed app does not release that gate.
 
 After handoff, follow each issue's remaining dependencies. A closed predecessor does not override an unresolved blocker or a missing agreed interface. The blocked label is a useful signal; read the issue and its native dependency links too.
 
