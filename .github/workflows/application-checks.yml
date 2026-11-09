@@ -50,6 +50,7 @@ jobs:
           apps/desktop/src/preview/BrowserSession.test.ts
           apps/desktop/src/preview/DesktopBrowserHost.test.ts
           apps/desktop/src/preview/CdpRelay.test.ts
+          apps/desktop/src/preview/Manager.test.ts
           apps/desktop/src/backend/DesktopLocalEnvironmentAuth.test.ts
           apps/server/src/orchestration-v2/ProviderSessionManager.test.ts
           apps/server/src/orchestration-v2/DelegatedCompletionDelivery.test.ts
@@ -58,6 +59,7 @@ jobs:
           apps/server/src/scheduling/Scheduler.test.ts
           apps/server/src/attachmentStore.test.ts
           apps/server/src/mcp/McpHttpServer.test.ts
+          apps/server/src/telemetry/AnalyticsService.test.ts
   desktop:
     name: Desktop build
     runs-on: macos-15

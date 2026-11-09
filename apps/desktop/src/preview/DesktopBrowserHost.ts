@@ -35,6 +35,7 @@ export interface DesktopBrowserTabKey {
 export interface DesktopBrowserTabDebugger {
   readonly webContents: Electron.WebContents;
   readonly debugger: Electron.Debugger;
+  readonly withScreenshot: (capture: () => Promise<unknown>) => Promise<unknown>;
 }
 
 const keyOf = ({ threadId, tabId }: DesktopBrowserTabKey) => `${threadId}\u0000${tabId}`;
@@ -89,10 +90,13 @@ export const make = Effect.gen(function* () {
     const { webContents, debugger: debuggee } = tab.debuggee;
     const relay: CdpRelayConnection = createCdpRelayConnection(
       {
-        send: (method, params, sessionId) =>
-          sessionId === undefined
-            ? sendPageCommand(webContents, debuggee, method, params)
-            : debuggee.sendCommand(method, params, sessionId),
+        send: (method, params, sessionId) => {
+          const send = () =>
+            sessionId === undefined
+              ? sendPageCommand(webContents, debuggee, method, params)
+              : debuggee.sendCommand(method, params, sessionId);
+          return method === "Page.captureScreenshot" ? tab.debuggee.withScreenshot(send) : send();
+        },
         targetId: () =>
           debuggee
             .sendCommand("Target.getTargetInfo")

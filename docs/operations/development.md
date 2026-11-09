@@ -36,10 +36,11 @@ T3CODE_HOME="$PWD/.t3" T3CODE_DISABLE_AUTO_UPDATE=1 T3CODE_TELEMETRY_ENABLED=fal
 
 This uses the checkout's ignored `.t3` backend state and Browser Agent's separate
 Electron profile. It disables updates and inherited telemetry for validation. The
-desktop launcher uses a separate app identifier. The renderer still contains T3
-branding while the inherited product screens are being validated.
+desktop launcher uses a separate app identifier. Analytics also defaults to off
+and requires an explicit destination and project key. The desktop app keeps its
+Browser Agent display name and local data paths during the Hive repository rename.
 
-Keep [Step One](https://github.com/B-a-1-a/browser-agent/issues/1) open until the
+Keep [Step One](https://github.com/B-a-1-a/hive/issues/1) open until the
 full core matrix has evidence. Contributor issues stay blocked during this work.
 
 ## Choosing a dev process
