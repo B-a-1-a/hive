@@ -1,0 +1,80 @@
+name: Application checks
+
+on:
+  push:
+    branches: [main, chore/owner-bootstrap]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: application-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: Core behavior
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      T3CODE_TELEMETRY_ENABLED: "false"
+      T3CODE_DISABLE_AUTO_UPDATE: "1"
+      T3CODE_HOME: /tmp/browser-agent-core-ci
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ci-deps
+      - name: Verify core behavior
+        run: >-
+          vp test run
+          apps/desktop/scripts/verify-preload-bundle.test.mjs
+          apps/desktop/scripts/electron-launcher.test.mjs
+          apps/desktop/scripts/dev-electron.test.mjs
+          apps/desktop/src/electron/ElectronProtocol.test.ts
+          apps/web/src/browser/hostedBrowserWebviewStyle.test.ts
+          packages/shared/src/providerAuthReturnUrl.test.ts
+          packages/shared/src/codexAuthHandoff.test.ts
+          packages/shared/src/promptLinks.test.ts
+          scripts/build-desktop-artifact.test.ts
+          scripts/dev-runner.test.ts
+          apps/server/src/os-jank.test.ts
+          apps/desktop/src/app/DesktopUserData.test.ts
+          apps/desktop/src/app/DesktopEnvironment.test.ts
+          apps/desktop/src/app/DesktopAppIdentity.test.ts
+          apps/desktop/src/app/DesktopPreReadyFileSystem.test.ts
+          apps/desktop/src/app/DesktopLegacyLocalStorage.test.ts
+          apps/desktop/src/preview/BrowserSession.test.ts
+          apps/desktop/src/preview/DesktopBrowserHost.test.ts
+          apps/desktop/src/preview/CdpRelay.test.ts
+          apps/desktop/src/preview/Manager.test.ts
+          apps/desktop/src/backend/DesktopLocalEnvironmentAuth.test.ts
+          apps/server/src/orchestration-v2/ProviderSessionManager.test.ts
+          apps/server/src/orchestration-v2/DelegatedCompletionDelivery.test.ts
+          apps/server/src/orchestration-v2/RestartContinuation.test.ts
+          apps/server/src/scheduledTasks/ScheduledTaskService.schedule.test.ts
+          apps/server/src/scheduling/Scheduler.test.ts
+          apps/server/src/attachmentStore.test.ts
+          apps/server/src/mcp/McpHttpServer.test.ts
+          apps/server/src/telemetry/AnalyticsService.test.ts
+  desktop:
+    name: Desktop build
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      T3CODE_TELEMETRY_ENABLED: "false"
+      T3CODE_DISABLE_AUTO_UPDATE: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-ci-deps
+      - name: Verify Electron runtime
+        run: vp run --filter @t3tools/desktop ensure:electron
+      - name: Build desktop and backend
+        run: vp run build:desktop
+      - name: Verify preload bundling
+        run: node apps/desktop/scripts/verify-preload-bundle.mjs

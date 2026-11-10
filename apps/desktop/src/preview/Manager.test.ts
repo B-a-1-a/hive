@@ -1703,6 +1703,65 @@ describe("PreviewManager", () => {
     ),
   );
 
+  effectIt.effect("keeps the host and guest painting for a server browser screenshot", () =>
+    Effect.gen(function* () {
+      const host = yield* DesktopBrowserHost.DesktopBrowserHost;
+      const manager = yield* PreviewManager.PreviewManager;
+      const serverTab = { threadId: "thread-1", tabId: "server-tab-1" };
+      const lines = yield* Queue.unbounded<string>();
+      yield* host.events.pipe(
+        Stream.runForEach((line) => Queue.offer(lines, new TextDecoder().decode(line))),
+        Effect.forkScoped,
+      );
+
+      const setHostThrottling = vi.fn();
+      const owner = Object.assign(makeTestHostWebContents(), {
+        setBackgroundThrottling: setHostThrottling,
+      });
+      const guest = Object.assign(makeTestPreviewWebContents(vi.fn(), 42, owner), {
+        isDevToolsOpened: () => false,
+        getUserAgent: () => "Electron",
+      });
+      vi.mocked(guest.debugger.sendCommand).mockImplementation(async (method) => {
+        if (method === "Page.captureScreenshot") {
+          if (
+            setHostThrottling.mock.lastCall?.[0] !== false ||
+            guest.setBackgroundThrottling.mock.lastCall?.[0] !== false
+          ) {
+            throw new Error("The hidden guest cannot paint.");
+          }
+          return { data: "captured" };
+        }
+        return {};
+      });
+      fromId.mockReturnValue(guest);
+      yield* manager.setMainWindow({
+        isDestroyed: () => false,
+        once: vi.fn(),
+        webContents: owner,
+      } as never);
+      yield* manager.createTab("tab_1", { serverTab });
+      yield* manager.registerWebview("tab_1", 42);
+      expect(JSON.parse(yield* Queue.take(lines))).toMatchObject({ type: "attached" });
+
+      yield* host.handleCommandLine(
+        JSON.stringify({
+          type: "cdp",
+          ...serverTab,
+          message: JSON.stringify({
+            id: 1,
+            method: "Page.captureScreenshot",
+            sessionId: "t3-preview-page",
+          }),
+        }),
+      );
+      const reply = JSON.parse(yield* Queue.take(lines));
+      expect(JSON.parse(reply.message)).toMatchObject({ id: 1, result: { data: "captured" } });
+      expect(setHostThrottling.mock.calls).toEqual([[false], [true]]);
+      expect(guest.setBackgroundThrottling.mock.calls).toEqual([[false], [true]]);
+    }).pipe(Effect.provide(managerLayer()), Effect.scoped),
+  );
+
   effectIt.effect("tells the server when a tab it renders natively closes", () =>
     Effect.gen(function* () {
       const host = yield* DesktopBrowserHost.DesktopBrowserHost;

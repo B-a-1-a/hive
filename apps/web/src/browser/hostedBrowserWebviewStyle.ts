@@ -48,7 +48,7 @@ export function resolveHostedBrowserWebviewWrapperStyle(input: {
     };
   }
 
-  if (renderingActive) {
+  if (renderingActive || keepPaintableWhenInactive) {
     // Electron stops compositing a guest that is fully outside the window, even
     // when background throttling is disabled. Keep capture-active guests inside
     // the viewport but behind the app so recordings receive complete frames.
@@ -70,6 +70,6 @@ export function resolveHostedBrowserWebviewWrapperStyle(input: {
     height: hiddenSize.height,
     zIndex: -1,
     pointerEvents: "none",
-    visibility: keepPaintableWhenInactive ? "visible" : "hidden",
+    visibility: "hidden",
   };
 }

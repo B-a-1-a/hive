@@ -297,8 +297,9 @@ export function HostedBrowserWebview(props: {
   const wrapperStyle = resolveHostedBrowserWebviewWrapperStyle({
     active,
     renderingActive,
-    // Electron 43 can permanently blank a macOS webview after `visibility: hidden`.
-    keepPaintableWhenInactive: isMacPlatform(navigator.platform),
+    // Server-side CDP captures need a composited guest even when its panel is closed.
+    // macOS also blanks guests after visibility: hidden. Neither path can move off-window.
+    keepPaintableWhenInactive: serverDriven || isMacPlatform(navigator.platform),
     cornerRadius: presentation.cornerRadius,
     zIndex: presentation.zIndex,
     rect: lastRect,

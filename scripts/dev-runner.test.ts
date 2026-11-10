@@ -672,13 +672,13 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
         }).pipe(Effect.scoped),
       );
 
-      it.effect("seeds a worktree database from ~/.t3 only when it has none", () =>
+      it.effect("seeds from Browser Agent only with explicit opt-in and an empty target", () =>
         Effect.gen(function* () {
           const path = yield* Path.Path;
           const root = yield* makeWorktree;
           const home = path.join(root, "home");
-          NodeFS.mkdirSync(path.join(home, ".t3", "userdata"), { recursive: true });
-          NodeFS.writeFileSync(path.join(home, ".t3", "userdata", "statev2.sqlite"), "");
+          NodeFS.mkdirSync(path.join(home, ".browser-agent", "userdata"), { recursive: true });
+          NodeFS.writeFileSync(path.join(home, ".browser-agent", "userdata", "statev2.sqlite"), "");
 
           const spawnedArgs = (seed: boolean | undefined) =>
             Effect.gen(function* () {
@@ -705,7 +705,8 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
             });
 
           assert.deepStrictEqual(yield* spawnedArgs(false), []);
-          const [seedArgs] = yield* spawnedArgs(undefined);
+          assert.deepStrictEqual(yield* spawnedArgs(undefined), []);
+          const [seedArgs] = yield* spawnedArgs(true);
           assert.includeMembers([...(seedArgs ?? [])], ["--base-dir", path.join(root, ".t3")]);
 
           // Either database means the worktree already has data.
@@ -713,13 +714,13 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
             const file = path.join(root, ".t3", "userdata", name);
             NodeFS.mkdirSync(path.dirname(file), { recursive: true });
             NodeFS.writeFileSync(file, "");
-            assert.deepStrictEqual(yield* spawnedArgs(undefined), []);
+            assert.deepStrictEqual(yield* spawnedArgs(true), []);
             NodeFS.rmSync(file);
           }
         }).pipe(Effect.scoped),
       );
 
-      it.effect("falls back to an ambient T3CODE_HOME outside a worktree", () =>
+      it.effect("keeps the checkout isolated from an ambient T3CODE_HOME outside a worktree", () =>
         Effect.gen(function* () {
           const path = yield* Path.Path;
           const home = yield* spawnedHome({
@@ -727,7 +728,7 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
             cwd: NodeOS.tmpdir(),
             ambientHome: "/home/user/.t3",
           });
-          assert.equal(home, path.resolve("/home/user/.t3"));
+          assert.equal(home, path.join(path.resolve(NodeOS.tmpdir()), ".t3"));
         }),
       );
     });

@@ -12,6 +12,8 @@
         // CodeRabbit loads its configuration by filename.
         ".coderabbit.config.ts",
         ".github/scripts/thread-transfer-report.cjs",
+        // Preserved entrypoints used by the archived upstream release workflows.
+        ".github/scripts/mirror-play-apk.cjs",
       ],
       "vite": { "entry": [".github/**/*.test.cjs"] },
       "vitest": { "entry": [".github/**/*.test.cjs"] },
@@ -24,6 +26,10 @@
       "entry": [
         // These fixture scripts are injected into a browser page by path.
         "fixtures/issue-16534/*.js",
+        // Kept for the archived release workflows, which Knip no longer discovers.
+        "build-cli-archive.ts",
+        "resolve-nightly-release.ts",
+        "smoke-cli-archive.ts",
         "knip-schemas.ts",
         "mobile-native-client.ts",
         "setup-worktree.ts",

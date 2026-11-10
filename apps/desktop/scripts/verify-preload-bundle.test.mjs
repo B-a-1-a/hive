@@ -90,3 +90,13 @@ describe("desktop preload bundle verifier", () => {
     );
   });
 });
+
+it("accepts document-ready window-control initialization in a sandboxed preload", () => {
+  assert.doesNotThrow(() =>
+    verifyPreloadBundle(`${validPreload}
+    window.addEventListener("DOMContentLoaded", () => {
+      document.documentElement.style.setProperty("--inset", String(require("electron").webFrame.getZoomFactor()));
+    }, { once: true });
+  `),
+  );
+});

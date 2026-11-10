@@ -75,7 +75,7 @@ for name in ['product-outline.html', 'browser-wireframes.html']:
     require(not parser.external_scripts, f'Document needs external scripts: {name}')
 
 active = sorted(path.name for path in (ROOT / '.github/workflows').glob('*.yml'))
-require(active == ['repository-checks.yml'], 'Adapt the bootstrap workflow policy before enabling additional CI')
+require(active == ['application-checks.yml', 'repository-checks.yml'], 'Unexpected active workflow; review before enabling additional automation')
 if errors:
     for error in errors:
         print(f'ERROR: {error}', file=sys.stderr)

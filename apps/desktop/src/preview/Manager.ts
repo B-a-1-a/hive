@@ -130,6 +130,8 @@ const PICTURE_IN_PICTURE_JPEG_QUALITY = 80;
 const CAPTURE_PAGE_RETRY_ATTEMPTS = 3;
 const CAPTURE_PAGE_RETRY_DELAY_MS = 120;
 const CAPTURE_PAGE_ATTEMPT_TIMEOUT_MS = 1_000;
+// Bound the painting lease even if Chromium never replies.
+const CDP_SCREENSHOT_TIMEOUT_MS = 8_000;
 const PICTURE_IN_PICTURE_INITIAL_WIDTH = 480;
 const PICTURE_IN_PICTURE_INITIAL_HEIGHT = 320;
 const PICTURE_IN_PICTURE_MIN_WIDTH = 240;
@@ -391,7 +393,7 @@ interface ManagedListeners {
   readonly webContents: Electron.WebContents;
 }
 
-type FrameCaptureConsumer = "picture-in-picture" | "recording";
+type FrameCaptureConsumer = "picture-in-picture" | "recording" | symbol;
 
 interface FrameCaptureSession {
   readonly recordingInputOptions?: RecordingInputOptions;
@@ -2387,7 +2389,26 @@ const makeNativeOperations = Effect.fn("PreviewManager.makeOperations")(function
       }
       if (afterAttach.serverTab) {
         yield* listenForAgentPointers;
-        browserHost.attach(afterAttach.serverTab, { webContents: wc, debugger: control.debugger });
+        browserHost.attach(afterAttach.serverTab, {
+          webContents: wc,
+          debugger: control.debugger,
+          withScreenshot: (capture) => {
+            // CDP waits for a fresh frame, which a hidden Electron window cannot paint
+            // while throttled. Share the rendering lease with recording and PiP.
+            const consumer = Symbol("screenshot");
+            return Effect.runPromiseWith(context)(
+              Effect.acquireUseRelease(
+                startFrameCapture(tabId, consumer),
+                () =>
+                  attemptPromise(
+                    { operation: "captureScreenshot", tabId, webContentsId: wc.id },
+                    capture,
+                  ).pipe(Effect.timeout(CDP_SCREENSHOT_TIMEOUT_MS)),
+                () => stopFrameCapture(tabId, consumer),
+              ),
+            );
+          },
+        });
       }
       if (afterAttach.colorScheme !== "system") {
         yield* attemptPromise({ operation: "applyColorScheme", tabId, webContentsId: wc.id }, () =>

@@ -89,21 +89,6 @@ function killChildTreeByPid(pid, signal) {
   NodeChildProcess.spawnSync("pkill", [`-${signal}`, "-P", String(pid)], { stdio: "ignore" });
 }
 
-function cleanupStaleDevApps() {
-  if (hostPlatform === "win32") {
-    return;
-  }
-
-  const escapedDesktopDir = desktopDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  NodeChildProcess.spawnSync(
-    "pkill",
-    ["-f", "--", `(^| )--t3code-dev-root=${escapedDesktopDir}( |$)`],
-    {
-      stdio: "ignore",
-    },
-  );
-}
-
 function startApp() {
   if (shuttingDown || currentApp !== null) {
     return;
@@ -170,7 +155,6 @@ async function stopApp() {
     app.once("exit", finish);
     app.kill("SIGTERM");
     killChildTreeByPid(app.pid, "TERM");
-    cleanupStaleDevApps();
 
     setTimeout(() => {
       if (settled) {
@@ -179,7 +163,6 @@ async function stopApp() {
 
       app.kill("SIGKILL");
       killChildTreeByPid(app.pid, "KILL");
-      cleanupStaleDevApps();
       finish();
     }, forcedShutdownTimeoutMs).unref();
   });
@@ -259,7 +242,6 @@ async function shutdown(exitCode) {
 }
 
 startWatchers();
-cleanupStaleDevApps();
 startApp();
 
 process.once("SIGINT", () => {

@@ -69,6 +69,7 @@ const createSandboxModules = (exposedGlobals) => {
       exposeInMainWorld: (name, api) => exposedGlobals.set(name, api),
     },
     ipcRenderer,
+    webFrame: { getZoomFactor: () => 1 },
     webUtils: {
       getPathForFile: () => "",
     },
@@ -103,10 +104,20 @@ const executeBundle = (source, sandboxModules) => {
     return sandboxModules.get(moduleName);
   };
 
+  const readyListeners = [];
+  const sandboxWindow = {
+    addEventListener: (event, listener) => {
+      if (event === "DOMContentLoaded") readyListeners.push(listener);
+    },
+  };
+  const sandboxDocument = { documentElement: { style: { setProperty: () => undefined } } };
+
   NodeVM.runInNewContext(
     source,
     {
       process: sandboxProcess,
+      window: sandboxWindow,
+      document: sandboxDocument,
       require: requireSandboxModule,
     },
     {
@@ -114,6 +125,7 @@ const executeBundle = (source, sandboxModules) => {
       timeout: preloadExecutionTimeoutMs,
     },
   );
+  for (const listener of readyListeners) listener();
 };
 
 export const verifyPreloadBundle = (source) => {

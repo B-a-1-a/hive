@@ -2,18 +2,46 @@
 
 ## First checkout
 
-Install `vp` using the [root README](../../README.md#install-vp). The checkout requires Node 24;
-Bun is optional. From the repository root:
+Use the versions pinned in `package.json` and `pnpm-workspace.yaml`: Node **26.12.1**,
+pnpm **12.14.0**, and Vite+ **1.3.0**. Bun is optional. Install the official Vite+ toolchain:
 
 ```sh
-vp i
-vp run dev
+curl -fsSL https://vite.plus -o /tmp/browser-agent-vp-install.sh
+VP_VERSION=1.3.0 VP_NODE_MANAGER=yes bash /tmp/browser-agent-vp-install.sh
+source "$HOME/.vite-plus/env"
+export PATH="$HOME/.vite-plus/bin:$HOME/.vite-plus/fallback-bin:$PATH"
+vp env use 26.12.1
+```
+
+The fallback-bin entry prevents an older system pnpm from taking precedence. From the repository root:
+
+```sh
+vp i --frozen-lockfile -- --yes
+vp run dev --home-dir "$PWD/.t3" --no-seed
 ```
 
 Open the pairing URL printed by the dev runner. The bare origin does not authenticate
 a new browser.
 
 Prefer a container? See [Dev container](../internals/devcontainer.md) for VS Code and Codespaces setup.
+
+## Isolated desktop validation
+
+Build and launch the desktop app without seeding from an installed T3 profile:
+
+```sh
+vp run build:desktop
+T3CODE_HOME="$PWD/.t3" T3CODE_DISABLE_AUTO_UPDATE=1 T3CODE_TELEMETRY_ENABLED=false vp run start:desktop
+```
+
+This uses the checkout's ignored `.t3` backend state and Browser Agent's separate
+Electron profile. It disables updates and inherited telemetry for validation. The
+desktop launcher uses a separate app identifier. Analytics also defaults to off
+and requires an explicit destination and project key. The desktop app keeps its
+Browser Agent display name and local data paths during the Hive repository rename.
+
+Keep [Step One](https://github.com/B-a-1-a/hive/issues/1) open until the
+full core matrix has evidence. Contributor issues stay blocked during this work.
 
 ## Choosing a dev process
 
@@ -27,7 +55,9 @@ Add `--browser` to open a browser automatically.
 ### State and ports
 
 Linked worktrees default to their own `.t3/userdata`, even when `T3CODE_HOME` is set.
-The main checkout defaults to `~/.t3/dev/userdata`. An explicit `--home-dir` wins in both cases.
+The main checkout also uses its own `.t3/userdata`. Development ignores an ambient
+`T3CODE_HOME`; an explicit `--home-dir` wins. Seeding is off by default. `--seed`
+can copy from this product's `~/.browser-agent` state, never the installed T3 profile.
 Never run a development server against the live `~/.t3/userdata`.
 See [test data](../../AGENTS.md#test-data) for copying a consistent database snapshot.
 
@@ -199,7 +229,8 @@ The C toolchain, pkg-config, and libsecret headers are also needed for Linux des
 
 ### macOS DMG prerequisites
 
-Install the Xcode Command Line Tools with `xcode-select --install` and install Rust.
+Install the Xcode Command Line Tools with `xcode-select --install` and Rustup. The repository
+pins Rust **1.95.0** in `rust-toolchain.toml`; run `rustup show` from the checkout to install it.
 For a cross-architecture or universal build, add the requested Rust targets:
 
 ```sh

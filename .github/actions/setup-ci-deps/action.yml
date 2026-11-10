@@ -64,4 +64,4 @@ runs:
 
     - name: Install dependencies
       shell: bash
-      run: vp install
+      run: vp install --frozen-lockfile -- --yes
