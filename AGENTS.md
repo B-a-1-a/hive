@@ -4,7 +4,9 @@
 
 This repository is Browser Agent, independently based on T3 Code. Use [CONTRIBUTING.md](CONTRIBUTING.md) for this project's task claiming, dependency gates, coordination, and review. The historical upstream guide in CONTRIBUTING.upstream.md is not this project's contribution policy.
 
-Use the [Development Loop skill](.agents/skills/development-loop/SKILL.md) for scoped implementation and verification. GitHub issues hold shared assignments and progress; personal agent memory does not grant task ownership. Keep the inherited technical constraints below while the owner validates the foundation.
+For nontrivial features, bug fixes, and refactors, proactively use the [Development Loop skill](.agents/skills/development-loop/SKILL.md). Briefly tell the developer, clarify only unresolved intent, implement the smallest coherent change, and coordinate an independent tester with the implementation agent until the acceptance criteria pass or a concrete blocker needs the developer. Use available delegation tools and optionally a different model; keep small fixes lightweight. Explicit `$development-loop` invocation also works. Follow the developer's requested scope and workflow.
+
+GitHub issues hold shared assignments and progress; personal agent memory does not grant task ownership. Keep contributor issues blocked until Bala completes Step One. Keep the inherited technical constraints below while the owner validates the foundation.
 
 T3 Code is a minimal GUI for coding agents. A Node WebSocket server wraps provider CLIs and agents (Codex, Claude Code, Cursor, Grok, OpenCode, Antigravity) and serves web, desktop, and mobile clients.
 
@@ -138,7 +140,7 @@ An empty database is a bad test. Seed your worktree's `.t3` with a copy of real 
   });
   ```
 
-- Upon request, user-visible frontend changes should get one integrated pass in a real client: `test-t3-app` for web, `test-t3-mobile` for mobile. The primary agent does this once after integrating. Subagents do not launch their own dev servers. Ask permission before doing computer use or spinning up browsers.
+- User-visible frontend behavior changes should get an integrated pass in a real client using `test-t3-app` for web/desktop UI or `test-t3-mobile` for mobile. The lead coordinates the pass and any retesting with the testing agent. The lead owns the dev server; subagents reuse it rather than launching their own. Requested implementation includes relevant testing in isolated development state. Respect tool permissions and ask only when a check needs access or actions beyond the authorized task.
 
 For authorized mobile verification, a missing or outdated native client is a build step, not a blocker. Run `node scripts/mobile-native-client.ts ensure <ios|android> <device-id>` on the simulator host before starting Metro. It checks the local Expo fingerprint and builds/installs when needed. See `test-t3-mobile` for the full workflow.
 
@@ -204,5 +206,5 @@ Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/
 
 ## Additional tips
 
-- Don't verify with browsers or computer use unless the user explicitly agrees or requests it.
+- Keep browser and computer-use verification within the task's authorized scope and isolated development state.
 - Security is important, but should not be over-indexed on, especially for dev mode/maintainer-only features.
