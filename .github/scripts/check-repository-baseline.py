@@ -4,6 +4,7 @@ import hashlib
 import json
 import re
 import sys
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[2]
 errors = []
@@ -39,6 +40,12 @@ for item in workflows:
     require(not (ROOT / item["original_path"]).exists(), f"Upstream publishing workflow is active: {item['original_path']}")
 for directory in ["apps/desktop", "apps/server", "apps/web", "packages/contracts", "packages/provider-core", "packages/provider-cursor", "packages/provider-opencode", "packages/provider-grok", "packages/provider-fx", "packages/provider-kiro"]:
     require((ROOT / directory).is_dir(), f"Missing inherited source: {directory}")
+tracked = subprocess.check_output(["git", "ls-files", "--stage"], cwd=ROOT, text=True)
+for line in tracked.splitlines():
+    if line.startswith("160000 "):
+        path = line.split("\t", 1)[1]
+        mappings = subprocess.check_output(["git", "config", "--file", ".gitmodules", "--get-regexp", r"submodule\..*\.path"], cwd=ROOT, text=True)
+        require(any(entry.split(" ", 1)[1] == path for entry in mappings.splitlines()), f"Missing reference submodule mapping: {path}")
 active = sorted(p.name for p in (ROOT / ".github/workflows").glob("*.yml"))
 require(active == ["application-checks.yml", "repository-checks.yml"], "Unexpected active automation")
 if errors:
