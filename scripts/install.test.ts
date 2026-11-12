@@ -46,7 +46,7 @@ describe.skipIf(HostProcess.Platform.defaultValue() !== "linux")("installer home
         },
       );
       expect(status, stdout + stderr).toBe(0);
-      expect(stderr).toContain(`Installed T3 Code ${version}`);
+      expect(stderr).toContain(`Installed Hive ${version}`);
       expect(await NodeFSP.readlink(launcher)).toBe(NodePath.join(target, "t3"));
       expect(
         NodeChildProcess.execFileSync(launcher, ["--version"], {
@@ -73,10 +73,10 @@ describe.skipIf(HostProcess.Platform.defaultValue() !== "linux")("installer chan
       if (failures-- > 0) return response.writeHead(504).end();
       const url = new URL(request.url ?? "/", "http://fixture");
       const body =
-        url.pathname === "/pingdotgg/t3code/releases/latest" &&
+        url.pathname === "/B-a-1-a/hive/releases/latest" &&
         request.headers.accept === "application/json"
           ? { tag_name: "v1.2.3" }
-          : url.pathname === "/repos/pingdotgg/t3code/releases"
+          : url.pathname === "/repos/B-a-1-a/hive/releases"
             ? { "1": nightlies, "2": [{ tag_name: `v${version}` }, { tag_name: "v1.2.3" }] }[
                 url.searchParams.get("page") ?? ""
               ]
@@ -121,7 +121,7 @@ describe.skipIf(HostProcess.Platform.defaultValue() !== "linux")("installer chan
         },
       );
       expect(code, output).toBe(0);
-      expect(output).toContain(`Installed T3 Code ${version}`);
+      expect(output).toContain(`Installed Hive ${version}`);
     } finally {
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
@@ -240,7 +240,7 @@ describe.skipIf(HostProcess.Platform.defaultValue() !== "linux")("install.sh t3 
         env: { HOME: root, PATH: `${binDir}/:/usr/bin:/bin` },
       });
       expect(slashed.code, slashed.output).toBe(0);
-      expect(slashed.output).toContain("Run t3 to use T3 Code here");
+      expect(slashed.output).toContain("Run t3 to use Hive here");
 
       // A relative folder is made absolute, so the PATH command never follows the working directory.
       const relative = await installOver({
@@ -273,12 +273,12 @@ describe.skipIf(HostProcess.Platform.defaultValue() !== "win32")("install.ps1 t3
     const root = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "t3-install-ps1-"));
     try {
       // Windows PowerShell 5.1 reads files as ANSI by default and expands wildcards in paths.
-      const home = NodePath.join(root, "José", ".t3");
+      const home = NodePath.join(root, "José", ".hive");
       const binDir = NodePath.join(root, "bin[t3]");
       const shim = NodePath.join(binDir, "t3.cmd");
       await NodeFSP.mkdir(binDir, { recursive: true });
 
-      const desktopShim = '@echo off\r\n"C:\\Program Files\\T3 Code\\T3 Code.exe" "x" %*\r\n';
+      const desktopShim = '@echo off\r\n"C:\\Program Files\\Hive\\Hive.exe" "x" %*\r\n';
       await NodeFSP.writeFile(shim, desktopShim);
       const foreign = await installOver({ script: "install.ps1", home, binDir });
       expect(foreign.code).not.toBe(0);
@@ -335,7 +335,7 @@ describe.skipIf(HostProcess.Platform.defaultValue() !== "win32")("install.ps1 t3
         env: { [pathKey]: `${binDir}\\;${process.env[pathKey] ?? ""}` },
       });
       expect(slashed.code, slashed.output).toBe(0);
-      expect(slashed.output).toContain("to use T3 Code here");
+      expect(slashed.output).toContain("to use Hive here");
       // The same when the install folder itself is given with a trailing separator.
       const bothSlashed = await installOver({
         script: "install.ps1",
@@ -344,7 +344,7 @@ describe.skipIf(HostProcess.Platform.defaultValue() !== "win32")("install.ps1 t3
         env: { [pathKey]: `${binDir}\\;${process.env[pathKey] ?? ""}` },
       });
       expect(bothSlashed.code, bothSlashed.output).toBe(0);
-      expect(bothSlashed.output).toContain("to use T3 Code here");
+      expect(bothSlashed.output).toContain("to use Hive here");
     } finally {
       await NodeFSP.rm(root, { recursive: true, force: true });
     }
@@ -454,7 +454,7 @@ describe.skipIf(HostProcess.Platform.defaultValue() !== "linux")("installer chec
           } else {
             expect(code).not.toBe(0);
             expect(output).toContain("checksum mismatch");
-            expect(output).not.toContain("Installed T3 Code");
+            expect(output).not.toContain("Installed Hive");
             expect(await NodeFSP.readdir(versions)).toEqual([]);
           }
         } finally {

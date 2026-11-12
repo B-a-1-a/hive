@@ -44,7 +44,7 @@ describe("ElectronProtocol", () => {
         clerkFrontendApiHostname: undefined,
       });
       const request = (pathname: string, init?: RequestInit) =>
-        Effect.promise(() => handler!(new Request(`t3code://app${pathname}`, init)));
+        Effect.promise(() => handler!(new Request(`hive://app${pathname}`, init)));
 
       const page = yield* request("/settings/connections");
       assert.equal(yield* Effect.promise(() => page.text()), "<html>app</html>");
@@ -86,11 +86,11 @@ describe("ElectronProtocol", () => {
 
           const response = yield* Effect.promise(() =>
             handler!(
-              new Request("t3code-dev://app/api/health?verbose=1", {
+              new Request("hive-dev://app/api/health?verbose=1", {
                 headers: {
                   accept: "application/json",
-                  origin: "t3code-dev://app",
-                  referer: "t3code-dev://app/",
+                  origin: "hive-dev://app",
+                  referer: "hive-dev://app/",
                   "sec-fetch-site": "same-origin",
                 },
               }),
@@ -147,9 +147,9 @@ describe("ElectronProtocol", () => {
             clerkFrontendApiHostname: undefined,
           });
           yield* Effect.promise(() =>
-            handler!(new Request("t3code-dev://app//example.com/src/main.tsx?t=1")),
+            handler!(new Request("hive-dev://app//example.com/src/main.tsx?t=1")),
           );
-          yield* Effect.promise(() => handler!(new Request("t3code-dev://app/\\example.com/")));
+          yield* Effect.promise(() => handler!(new Request("hive-dev://app/\\example.com/")));
         }),
       );
 
@@ -178,7 +178,7 @@ describe("ElectronProtocol", () => {
             targetOrigin: new URL("http://127.0.0.1:3773/"),
             clerkFrontendApiHostname: undefined,
           });
-          return yield* Effect.promise(() => handler!(new Request("t3code://other/")));
+          return yield* Effect.promise(() => handler!(new Request("hive://other/")));
         }),
       );
 

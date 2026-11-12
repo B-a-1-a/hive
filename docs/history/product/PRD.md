@@ -1,3 +1,5 @@
+> Historical proposal — superseded on November 11, 2026. Bala is shaping Hive from a fresh stable T3 Code baseline before creating new contributor tasks. Future browser and computer use will use built-in, non-removable agent-browser and agent-desktop plugins; neither is implemented in this refresh. All inherited features remain in place. See the repository README for the current scope.
+
 # Browser Agent product requirements
 
 Version 0.1 • October 28, 2026 • Product owner: Bala

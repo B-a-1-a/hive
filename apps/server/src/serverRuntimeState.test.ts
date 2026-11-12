@@ -38,7 +38,7 @@ const startBesideBootService = Effect.fn("test.startBesideBootService")(function
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const root = yield* fs.makeTempDirectoryScoped({ prefix: "t3-owner-boot-service-" });
-  const t3Home = path.join(root, ".t3");
+  const t3Home = path.join(root, ".hive");
   const serviceHome = input.unitServesOtherHome ? path.join(root, "other") : t3Home;
   for (const home of [t3Home, serviceHome]) {
     yield* fs.makeDirectory(path.join(home, "userdata"), { recursive: true });

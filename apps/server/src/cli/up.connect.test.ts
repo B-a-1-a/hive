@@ -81,7 +81,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer, NetService.layer))
           installed: true,
           current: true,
           unitPath: "/home/me/.config/systemd/user/t3code.service",
-          logPath: "/home/me/.t3/userdata/logs/boot-service.log",
+          logPath: "/home/me/.hive/userdata/logs/boot-service.log",
         };
         vi.spyOn(BootService, "layer").mockReturnValue(
           Layer.succeed(
@@ -144,7 +144,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer, NetService.layer))
                 current: false,
                 otherBaseDir: "/srv/t3",
                 unitPath: "/home/me/.config/systemd/user/t3code.service",
-                logPath: "/home/me/.t3/userdata/logs/boot-service.log",
+                logPath: "/home/me/.hive/userdata/logs/boot-service.log",
               }),
               withStopped: (operation) => operation,
               restart: Effect.sync(() => events.push("restart")).pipe(

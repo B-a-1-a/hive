@@ -125,21 +125,21 @@ it.layer(NodeServices.layer)("host CLI commands", (it) => {
       const shim = path.join(home, "t3.cmd");
       yield* fs.writeFileString(shim, "@echo off\r\n");
       const hostCommand = (platform: NodeJS.Platform, env: Record<string, string>) =>
-        resolveHostCliCommand("doctor", ["--base-dir", "C:\\Users\\Jane Doe\\.t3"]).pipe(
-          Effect.provideService(HostProcess.ExecutablePath, "C:\\Program Files\\T3 Code\\t3.exe"),
+        resolveHostCliCommand("doctor", ["--base-dir", "C:\\Users\\Jane Doe\\.hive"]).pipe(
+          Effect.provideService(HostProcess.ExecutablePath, "C:\\Program Files\\Hive\\t3.exe"),
           Effect.provideService(HostProcess.Arguments, [
-            "C:\\Program Files\\T3 Code\\t3.exe",
-            "C:\\Program Files\\T3 Code\\resources\\app.asar\\apps\\server\\dist\\bin.mjs",
+            "C:\\Program Files\\Hive\\t3.exe",
+            "C:\\Program Files\\Hive\\resources\\app.asar\\apps\\server\\dist\\bin.mjs",
           ]),
           Effect.provideService(HostProcess.IsExecutable, false),
           Effect.provideService(HostProcess.Platform, platform),
           Effect.provideService(HostProcess.Environment, { PATH: "", ...env }),
         );
       expect((yield* hostCommand("win32", { T3CODE_CLI_PATH: shim })).command).toBe(
-        `& "${shim}" doctor "--base-dir" "C:\\Users\\Jane Doe\\.t3"`,
+        `& "${shim}" doctor "--base-dir" "C:\\Users\\Jane Doe\\.hive"`,
       );
       expect((yield* hostCommand("win32", {})).command).toBe(
-        't3 doctor "--base-dir" "C:\\Users\\Jane Doe\\.t3"',
+        't3 doctor "--base-dir" "C:\\Users\\Jane Doe\\.hive"',
       );
       expect(
         (yield* resolveHostCliCommand("doctor", ["--base-dir", "C:\\T3\\\u201CArchive\u201D"]).pipe(
@@ -151,7 +151,7 @@ it.layer(NodeServices.layer)("host CLI commands", (it) => {
         )).command,
       ).toBe('t3 doctor "--base-dir" "C:\\T3\\\u201C\u201CArchive\u201D\u201D"');
       expect((yield* hostCommand("linux", { T3CODE_CLI_PATH: shim })).command).toMatch(
-        / doctor --base-dir 'C:\\Users\\Jane Doe\\\.t3'$/,
+        / doctor --base-dir 'C:\\Users\\Jane Doe\\\.hive'$/,
       );
     }).pipe(Effect.scoped),
   );
@@ -163,7 +163,7 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
       const fs = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
       const root = yield* fs.makeTempDirectoryScoped();
-      const executable = path.join(root, ".t3/runtime/versions/1.0.0/t3");
+      const executable = path.join(root, ".hive/runtime/versions/1.0.0/t3");
       yield* fs.makeDirectory(path.dirname(executable), { recursive: true });
       yield* fs.writeFileString(executable, "");
       for (const [relative, kind] of [
@@ -233,7 +233,7 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
       const prefix = path.join(root, "bunx-tools");
       const packageRoot = path.join(prefix, "lib/node_modules/t3");
       const launcher = path.join(packageRoot, "bin/t3.mjs");
-      const executable = path.join(root, ".t3/runtime/versions/1.0.0/t3");
+      const executable = path.join(root, ".hive/runtime/versions/1.0.0/t3");
       yield* fs.makeDirectory(path.dirname(launcher), { recursive: true });
       yield* fs.makeDirectory(path.dirname(executable), { recursive: true });
       yield* fs.makeDirectory(path.join(prefix, "bin"));
@@ -268,7 +268,7 @@ it.layer(NodeServices.layer)("manual server installation ownership", (it) => {
       for (const relative of [
         "project/node_modules/t3/dist/bin.mjs",
         "project/apps/server/dist/bin.mjs",
-        ".t3/runtime/0.0.45/t3",
+        ".hive/runtime/0.0.45/t3",
         "missing/dist/bin.mjs",
       ]) {
         const entry = path.join(root, relative);

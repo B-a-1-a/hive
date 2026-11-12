@@ -62,7 +62,7 @@ const SERVICE = {
   installed: true,
   current: true,
   unitPath: "/home/me/.config/systemd/user/t3code.service",
-  logPath: "/home/me/.t3/userdata/logs/boot-service.log",
+  logPath: "/home/me/.hive/userdata/logs/boot-service.log",
 } as const;
 
 it.each([

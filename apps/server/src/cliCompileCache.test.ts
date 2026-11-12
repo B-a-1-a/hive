@@ -59,7 +59,7 @@ it.live("loads the CLI with its cache settings only when the command needs it", 
     expect(normal.exitCode).toBe(0);
     expect(normal.stderr).toContain("LOADED_CLI_MAIN");
     expect(normal.stderr.replaceAll("\\", "/")).toContain(
-      `CACHE=${root}/cache/t3code/compile-cache`.replaceAll("\\", "/"),
+      `CACHE=${root}/cache/hive/compile-cache`.replaceAll("\\", "/"),
     );
     const launcher = yield* run({ T3CODE_HOME: "" }, ["__service-launcher"]);
     expect(launcher.exitCode).toBe(1);

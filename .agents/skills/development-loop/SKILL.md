@@ -1,6 +1,6 @@
 ---
 name: development-loop
-description: Clarify intended behavior, implement focused changes, and coordinate testing and fixes for Browser Agent features, bug fixes, and refactors. Use proactively for nontrivial development or when explicitly invoked; scale effort to the task.
+description: Clarify intended behavior, implement focused changes, and coordinate testing and fixes for Hive features, bug fixes, and refactors. Use proactively for nontrivial development or when explicitly invoked; scale effort to the task.
 ---
 
 # Development Loop
@@ -9,11 +9,11 @@ Help the contributor deliver a change they understand and can explain, with evid
 
 ## Establish the task and context
 
-Read the repository's [AGENTS.md](../../../AGENTS.md) and any nearer instructions. Follow [CONTRIBUTING.md](../../../CONTRIBUTING.md#claiming-and-coordinating-work) for ownership and dependency checks. GitHub issues hold shared assignments and progress. Personal agent memory is not team approval or an assignment record.
+Read the repository's [AGENTS.md](../../../AGENTS.md) and any nearer instructions. Follow [CONTRIBUTING.md](../../../CONTRIBUTING.md) for ownership and dependency checks. GitHub issues hold shared assignments and progress. Personal agent memory is not team approval or an assignment record.
 
-For an issue-based task, read its outcome, scope exclusions, acceptance criteria, and dependencies. Respect Bala's Step One gate. Do not take over another contributor's work. Posting comments, assigning issues, opening PRs, and merging require the user's authorization for those actions.
+For an issue-based task, read its outcome, scope exclusions, acceptance criteria, and dependencies. The previous contributor backlog is superseded; follow Bala's current owner-led scope. Do not take over another contributor's work. Posting comments, assigning issues, opening PRs, and merging require the user's authorization for those actions.
 
-Read the files to change, related contracts and tests, and an existing example of the same pattern. Trace the relevant caller and consumer when crossing a boundary. Use only the relevant [PRD](../../../docs/product/PRD.md) sections. Do not infer behavior from a filename or an agent's previous summary alone.
+Read the files to change, related contracts and tests, and an existing example of the same pattern. Trace the relevant caller and consumer when crossing a boundary. Use the current direction in [README.md](../../../README.md); historical product documents are not active assignments. Do not infer behavior from a filename or an agent's previous summary alone.
 
 Start from the developer's intended experience. Summarize the scope and a few observable acceptance criteria, reusing the issue or existing specification when sufficient. Ask focused questions only about unresolved behavior, scope, ownership, or compatibility. Resolve routine technical details from the code. Do not require a planning document or a confirmation round when the request is clear. Continue independent work while awaiting a needed decision.
 
