@@ -59,6 +59,19 @@ jobs:
           apps/server/src/attachmentStore.test.ts
           apps/server/src/mcp/McpHttpServer.test.ts
           apps/server/src/telemetry/AnalyticsService.test.ts
+          packages/client-runtime/src/authorization/remote.test.ts
+          apps/web/src/components/GitHubStarPrompt.test.ts
+          apps/desktop/src/app/DesktopLifecycle.test.ts
+          apps/desktop/src/snapShot/GnomeCaptureSetup.test.ts
+          apps/server/src/serverRuntimeState.test.ts
+          apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts
+          apps/server/src/orchestration-v2/Adapters/OpenCode2AdapterV2.test.ts
+          scripts/notify-discord-release.test.ts
+          packages/shared/src/paletteSearch.test.ts
+          packages/shared/src/speech.test.ts
+          packages/shared/src/threadLinks.test.ts
+          apps/desktop/src/app/DesktopStartupRecovery.test.ts
+          apps/server/src/cloud/servicePreflight.test.ts
   desktop:
     name: Desktop build
     runs-on: macos-15

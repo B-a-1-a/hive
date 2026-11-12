@@ -262,7 +262,7 @@ describe("DesktopLifecycle", () => {
         Effect.provideService(HostProcess.Arguments, [
           "/opt/Hive/t3code",
           "--no-sandbox",
-          "T3CODE://pair?token=spent",
+          "HIVE://pair?token=spent",
           "hive://new?prompt=hello",
         ]),
       );

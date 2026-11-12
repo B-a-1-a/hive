@@ -209,7 +209,7 @@ describe("hosted thread links", () => {
     expect(link).toBe("https://app.t3.codes/threads/env%2E1/thread%3Adelegated%2Fmcp%253A1%2E");
     expect(parseThreadLinkHref(link)).toEqual(thread);
     expect(hostedThreadLink(thread, "https://preview.t3.codes/")).toMatch(
-      /^https:\/\/preview\.hive\.codes\/threads\//,
+      /^https:\/\/preview\.t3\.codes\/threads\//,
     );
   });
 
