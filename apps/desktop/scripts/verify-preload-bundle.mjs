@@ -69,7 +69,6 @@ const createSandboxModules = (exposedGlobals) => {
       exposeInMainWorld: (name, api) => exposedGlobals.set(name, api),
     },
     ipcRenderer,
-    webFrame: { getZoomFactor: () => 1 },
     webUtils: {
       getPathForFile: () => "",
     },
@@ -104,28 +103,23 @@ const executeBundle = (source, sandboxModules) => {
     return sandboxModules.get(moduleName);
   };
 
-  const readyListeners = [];
-  const sandboxWindow = {
-    addEventListener: (event, listener) => {
-      if (event === "DOMContentLoaded") readyListeners.push(listener);
-    },
-  };
-  const sandboxDocument = { documentElement: { style: { setProperty: () => undefined } } };
+  // A real preload loads with the page's DOM; no page events fire while the bundle runs here.
+  const document = Object.assign(new EventTarget(), { fullscreenElement: null });
+  const window = Object.assign(new EventTarget(), { document });
 
   NodeVM.runInNewContext(
     source,
     {
+      document,
       process: sandboxProcess,
-      window: sandboxWindow,
-      document: sandboxDocument,
       require: requireSandboxModule,
+      window,
     },
     {
       filename: "desktop-preload.cjs",
       timeout: preloadExecutionTimeoutMs,
     },
   );
-  for (const listener of readyListeners) listener();
 };
 
 export const verifyPreloadBundle = (source) => {

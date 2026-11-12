@@ -68,17 +68,8 @@ describe("DesktopEnvironment", () => {
       );
       const production = yield* makeEnvironment();
 
-      assert.equal(development.stateDir, "/Users/alice/.browser-agent/dev");
-      assert.equal(production.stateDir, "/Users/alice/.browser-agent/userdata");
+      assert.equal(development.stateDir, "/Users/alice/.t3/dev");
+      assert.equal(production.stateDir, "/Users/alice/.t3/userdata");
     }),
   );
 });
-
-it.effect("uses an independent desktop name, app identifier, and default state directory", () =>
-  Effect.gen(function* () {
-    const environment = yield* makeEnvironment();
-    assert.equal(environment.branding.baseName, "Browser Agent");
-    assert.equal(environment.appUserModelId, "com.browseragent.desktop");
-    assert.equal(environment.stateDir, "/Users/alice/.browser-agent/userdata");
-  }),
-);

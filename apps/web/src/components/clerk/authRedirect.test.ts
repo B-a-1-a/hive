@@ -6,12 +6,12 @@ describe("resolveClerkSignInProps", () => {
   it("removes a Clerk virtual pathname and callback params while preserving the desktop route", () => {
     expect(
       resolveClerkSignInProps(
-        "browser-agent://app/CLERK-ROUTER/VIRTUAL/sign-up?__clerk_status=complete#/settings/connections",
+        "t3code://app/CLERK-ROUTER/VIRTUAL/sign-up?__clerk_status=complete#/settings/connections",
         true,
       ),
     ).toEqual({
-      forceRedirectUrl: "browser-agent://app/#/settings/connections",
-      signUpForceRedirectUrl: "browser-agent://app/#/settings/connections",
+      forceRedirectUrl: "t3code://app/#/settings/connections",
+      signUpForceRedirectUrl: "t3code://app/#/settings/connections",
     });
   });
 });
