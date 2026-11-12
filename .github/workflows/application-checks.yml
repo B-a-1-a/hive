@@ -72,6 +72,7 @@ jobs:
           packages/shared/src/threadLinks.test.ts
           apps/desktop/src/app/DesktopStartupRecovery.test.ts
           apps/server/src/cloud/servicePreflight.test.ts
+          apps/server/src/orchestration-v2/testkit/ThreadFork.integration.test.ts
   desktop:
     name: Desktop build
     runs-on: macos-15
