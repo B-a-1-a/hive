@@ -40,6 +40,8 @@ jobs:
           scripts/build-desktop-artifact.test.ts
           scripts/dev-runner.test.ts
           apps/server/src/os-jank.test.ts
+          apps/desktop/src/app/DesktopPreReadyPlatform.test.ts
+          apps/desktop/src/app/DesktopLinuxUrlHandler.test.ts
           apps/desktop/src/app/DesktopUserData.test.ts
           apps/desktop/src/app/DesktopEnvironment.test.ts
           apps/desktop/src/app/DesktopAppIdentity.test.ts

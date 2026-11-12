@@ -829,10 +829,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
           commands.filter(
             (command) => command.startsWith("systemctl ") && !command.includes("show-environment"),
           ),
-        ).toEqual([
-          "systemctl --user stop hive.service",
-          "systemctl --user restart hive.service",
-        ]);
+        ).toEqual(["systemctl --user stop hive.service", "systemctl --user restart hive.service"]);
       }
     }),
   );

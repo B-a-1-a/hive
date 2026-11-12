@@ -162,10 +162,7 @@ describe("DesktopPreReadyPlatform", () => {
         assert.include(identity.desktopEntry ?? "", "Exec=/Applications/current.AppImage %U");
         assert.include(identity.desktopEntry ?? "", "Name=Hive (Beta)");
         assert.include(identity.desktopEntry ?? "", "MimeType=x-scheme-handler/hive;");
-        assert.include(
-          identity.desktopEntry ?? "",
-          "Icon=/xdg/icons/com.hive.desktop.desktop.png",
-        );
+        assert.include(identity.desktopEntry ?? "", "Icon=/xdg/icons/com.hive.desktop.desktop.png");
         assert.isTrue(identity.iconInstalled);
       }),
     ).pipe(Effect.ensuring(Effect.sync(() => vi.unstubAllEnvs())));
@@ -184,7 +181,7 @@ describe("DesktopPreReadyPlatform", () => {
               DesktopConfig.layerTest({
                 XDG_DATA_HOME: "/xdg",
                 APPIMAGE: "/Applications/current.AppImage",
-                T3CODE_DESKTOP_LAUNCHER_PATH: " /opt/Hive/t3code ",
+                T3CODE_DESKTOP_LAUNCHER_PATH: " /opt/Hive App/t3code ",
               }),
             ),
           ),
@@ -192,7 +189,7 @@ describe("DesktopPreReadyPlatform", () => {
         const entry = writeFileSyncMock.mock.calls.find(
           ([path]) => path === "/xdg/applications/com.hive.desktop.desktop",
         )?.[1];
-        assert.include(entry, 'Exec="/opt/Hive/t3code" %U');
+        assert.include(entry, 'Exec="/opt/Hive App/t3code" %U');
       }),
     ).pipe(Effect.ensuring(Effect.sync(() => vi.unstubAllEnvs())));
   });

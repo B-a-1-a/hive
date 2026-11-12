@@ -2,7 +2,7 @@
 
 This checkout is Hive, based on the pinned T3 Code release in UPSTREAM.json. The following technical guide is inherited upstream guidance. The user's current scope takes precedence: retain all upstream features and provider implementations; change only app branding and identity. Keep original attribution and external service identities accurate. Use clean `.hive` development state with `--no-seed`; never import or modify old T3 Code or Browser Agent profiles.
 
-Contributor issues from the earlier plan are superseded. Follow CONTRIBUTING.md for current coordination and use .agents/skills/development-loop/SKILL.md for substantial changes. Do not start implementing the historical PRD or future plugins without a new request.
+The old contributor backlog and product plan have been discarded. Follow CONTRIBUTING.md for current coordination and use .agents/skills/development-loop/SKILL.md for substantial changes. Do not infer new assignments or implement future plugins without a new request.
 
 # T3 Code
 

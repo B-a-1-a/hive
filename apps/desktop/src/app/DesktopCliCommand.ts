@@ -401,9 +401,7 @@ export const make = Effect.gen(function* () {
     if (setup === undefined) return yield* fail("Hive cannot add t3 to this shell's PATH.");
     const shadowedBy = yield* foreignFirstOnPath;
     if (Option.isSome(shadowedBy)) {
-      return yield* fail(
-        `Another t3 at ${shadowedBy.value} runs first; Hive leaves it in place.`,
-      );
+      return yield* fail(`Another t3 at ${shadowedBy.value} runs first; Hive leaves it in place.`);
     }
     if (!(yield* folderOnPath(installed.value)) && !(yield* hasLine(setup))) {
       yield* fs.makeDirectory(path.dirname(setup.path), { recursive: true }).pipe(

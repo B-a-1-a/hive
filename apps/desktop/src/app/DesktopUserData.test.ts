@@ -47,7 +47,13 @@ it.effect("leaves existing T3 and Browser Agent profiles untouched", () =>
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const directory = yield* fs.makeTempDirectoryScoped({ prefix: "hive-profile-isolation-" });
-    const oldNames = ["t3code", "t3code-v2", "T3 Code (Alpha)", "browser-agent", "Browser Agent (Alpha)"];
+    const oldNames = [
+      "t3code",
+      "t3code-v2",
+      "T3 Code (Alpha)",
+      "browser-agent",
+      "Browser Agent (Alpha)",
+    ];
     for (const name of oldNames) {
       yield* fs.makeDirectory(path.join(directory, name), { recursive: true });
       yield* fs.writeFileString(path.join(directory, name, "Local State"), "old profile");
@@ -62,7 +68,10 @@ it.effect("leaves existing T3 and Browser Agent profiles untouched", () =>
       assert.isFalse(yield* fs.exists(destination));
     }
     for (const name of oldNames) {
-      assert.equal(yield* fs.readFileString(path.join(directory, name, "Local State")), "old profile");
+      assert.equal(
+        yield* fs.readFileString(path.join(directory, name, "Local State")),
+        "old profile",
+      );
     }
   }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 );

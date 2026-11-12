@@ -241,10 +241,10 @@ describe("DesktopLinuxUrlHandler", () => {
 
     return Effect.gen(function* () {
       yield* runRegister(recorded, {
-        environment: { desktopLauncherPath: Option.some("/opt/Hive/t3code") },
+        environment: { desktopLauncherPath: Option.some("/opt/Hive App/t3code") },
       });
 
-      assert.include(recorded.files[0]?.content, 'Exec="/opt/Hive/t3code" %U');
+      assert.include(recorded.files[0]?.content, 'Exec="/opt/Hive App/t3code" %U');
     });
   });
 
@@ -558,7 +558,7 @@ const iconCacheRuns = (run: ThemeIconRun) =>
   run.commands.filter(({ command }) => command === "gtk-update-icon-cache").length;
 
 it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
-  it.effect("installs both app id spellings without creating an icon cache", () =>
+  it.effect("installs the deduplicated app icon without creating an icon cache", () =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
       const path = yield* Path.Path;
@@ -569,16 +569,15 @@ it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
       yield* registerWithRealFileSystem(run);
       assert.deepEqual([...(yield* fileSystem.readDirectory(fixture.appsDir))].sort(), [
         "com.hive.desktop.png",
-        "com.hive.desktop.png",
       ]);
-      for (const name of ["com.hive.desktop", "com.hive.desktop"]) {
+      for (const name of ["com.hive.desktop"]) {
         const target = path.join(fixture.appsDir, `${name}.png`);
         assert.deepEqual([...(yield* fileSystem.readFile(target))], [...icon]);
         yield* fileSystem.utimes(target, fixture.pastSeconds, fixture.pastSeconds);
       }
 
       yield* registerWithRealFileSystem(run);
-      for (const name of ["com.hive.desktop", "com.hive.desktop"]) {
+      for (const name of ["com.hive.desktop"]) {
         const info = yield* fileSystem.stat(path.join(fixture.appsDir, `${name}.png`));
         assert.equal(Option.getOrThrow(info.mtime).getTime(), fixture.pastSeconds * 1000);
       }
@@ -593,11 +592,11 @@ it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
       const path = yield* Path.Path;
       const fixture = yield* themeIconFixture(new Uint8Array([1, 2, 3]));
       yield* fixture.seedCache;
-      const lower = path.join(fixture.appsDir, "com.hive.desktop.png");
-      const upper = path.join(fixture.appsDir, "com.hive.desktop.png");
-      yield* fileSystem.writeFile(lower, new Uint8Array([3, 2, 1]));
-      yield* fileSystem.writeFile(upper, new Uint8Array([1, 2, 3]));
-      for (const target of [lower, upper]) {
+      const stale = path.join(fixture.appsDir, "com.hive.desktop.png");
+      const unrelated = path.join(fixture.appsDir, "unrelated-app.png");
+      yield* fileSystem.writeFile(stale, new Uint8Array([3, 2, 1]));
+      yield* fileSystem.writeFile(unrelated, new Uint8Array([1, 2, 3]));
+      for (const target of [stale, unrelated]) {
         yield* fileSystem.utimes(target, fixture.pastSeconds, fixture.pastSeconds);
       }
       const run: ThemeIconRun = {
@@ -609,9 +608,9 @@ it.layer(NodeServices.layer)("DesktopLinuxUrlHandler theme icons", (it) => {
       yield* registerWithRealFileSystem(run);
       yield* registerWithRealFileSystem(run);
 
-      assert.deepEqual([...(yield* fileSystem.readFile(lower))], [1, 2, 3]);
-      const upperInfo = yield* fileSystem.stat(upper);
-      assert.equal(Option.getOrThrow(upperInfo.mtime).getTime(), fixture.pastSeconds * 1000);
+      assert.deepEqual([...(yield* fileSystem.readFile(stale))], [1, 2, 3]);
+      const unrelatedInfo = yield* fileSystem.stat(unrelated);
+      assert.equal(Option.getOrThrow(unrelatedInfo.mtime).getTime(), fixture.pastSeconds * 1000);
       assert.deepEqual(
         run.commands.filter(({ command }) => command === "gtk-update-icon-cache"),
         [{ command: "gtk-update-icon-cache", args: ["-f", "-t", fixture.hicolorDir] }],

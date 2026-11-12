@@ -19,7 +19,7 @@ For source builds and other development commands, see [Development](docs/operati
 
 ## Current direction
 
-Bala is shaping the app before creating a new contributor backlog. The previous contributor issues and delivery tracker are superseded; they are not active assignments. The previous PRD and wireframes in [docs/history](docs/history) are historical proposals.
+Bala is shaping the app before creating a new contributor backlog. The old contributor backlog, PRD, and wireframes have been discarded. New work will be defined from the product vision after this baseline.
 
 Later, browser use and computer use will be wrapped as built-in, non-removable plugins using [agent-browser](https://github.com/vercel-labs/agent-browser) and [agent-desktop](https://github.com/vercel-labs/agent-desktop). Neither is added in this refresh. All inherited features, including the built-in browser, remain functional until a later explicit change.
 

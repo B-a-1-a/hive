@@ -326,9 +326,7 @@ it.effect(
         "hive-dev://app/settings/providers?instanceId=work&code=never-forward",
       ]);
       yield* Effect.promise(() => revealed.promise);
-      assert.deepEqual(loadURL.mock.calls, [
-        ["hive-dev://app/settings/providers?instanceId=work"],
-      ]);
+      assert.deepEqual(loadURL.mock.calls, [["hive-dev://app/settings/providers?instanceId=work"]]);
       listeners.get("open-url")!(event, "hive-dev://app/welcome#agents:machine-id");
       assert.equal(event.preventDefault.mock.calls.length, 1);
     }).pipe(
