@@ -62,7 +62,7 @@ export class SqliteStateSharedHomeMutationError extends Schema.TaggedError<Sqlit
   {},
 ) {
   override get message(): string {
-    return "Refusing to mutate the shared ~/.t3 database. Use an isolated --base-dir.";
+    return "Refusing to mutate the shared ~/.hive database. Use an isolated --base-dir.";
   }
 }
 
@@ -181,7 +181,7 @@ export const runSqliteState = Effect.fn("runSqliteState")(function* (
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const baseDir = path.resolve(input.baseDir);
-  const sharedHome = path.resolve(options.sharedHome ?? path.join(NodeOS.homedir(), ".t3"));
+  const sharedHome = path.resolve(options.sharedHome ?? path.join(NodeOS.homedir(), ".hive"));
   const databasePath = path.join(baseDir, "userdata", "statev2.sqlite");
   const source = yield* resolveSqlSource(input.sql, input.file);
 
@@ -201,8 +201,7 @@ export const runSqliteState = Effect.fn("runSqliteState")(function* (
   const program = Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     yield* sql.unsafe("PRAGMA busy_timeout = 5000").unprepared;
-    // This connection bypasses persistence/Sqlite.ts and can checkpoint
-    // statev2.sqlite, so it needs the same F_FULLFSYNC checkpoint barrier.
+    // This connection can checkpoint statev2.sqlite, so it needs Sqlite.ts's F_FULLFSYNC barrier.
     yield* sql.unsafe("PRAGMA checkpoint_fullfsync = ON").unprepared;
 
     if (input.operation === "query") {

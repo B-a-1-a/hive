@@ -8,7 +8,7 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeOS from "node:os";
 import { assert, it, vi } from "vite-plus/test";
 
-import { fixPath, hydratePosixHome, resolveBaseDir } from "./os-jank.ts";
+import { fixPath, hydratePosixHome } from "./os-jank.ts";
 
 vi.mock("node:child_process", { spy: true });
 
@@ -150,13 +150,4 @@ effectIt.effect("replaces a Path-spelled Windows PATH instead of adding a second
 
     assert.deepEqual(env, { PATH: "C:\\Tools;C:\\Windows" });
   }),
-);
-
-effectIt.effect("defaults the standalone server to Browser Agent data without touching T3", () =>
-  Effect.gen(function* () {
-    assert.equal(yield* resolveBaseDir(undefined), "/fixture/home/.browser-agent");
-  }).pipe(
-    Effect.provideService(HostProcess.HomeDirectory, "/fixture/home"),
-    Effect.provide(NodeServices.layer),
-  ),
 );

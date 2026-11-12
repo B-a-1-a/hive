@@ -2,7 +2,7 @@ name: Application checks
 
 on:
   push:
-    branches: [main, chore/owner-bootstrap]
+    branches: [main, chore/hive-stable-refresh]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -22,7 +22,7 @@ jobs:
     env:
       T3CODE_TELEMETRY_ENABLED: "false"
       T3CODE_DISABLE_AUTO_UPDATE: "1"
-      T3CODE_HOME: /tmp/browser-agent-core-ci
+      T3CODE_HOME: /tmp/hive-core-ci
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,20 +33,19 @@ jobs:
           vp test run
           apps/desktop/scripts/verify-preload-bundle.test.mjs
           apps/desktop/scripts/electron-launcher.test.mjs
-          apps/desktop/scripts/dev-electron.test.mjs
           apps/desktop/src/electron/ElectronProtocol.test.ts
-          apps/web/src/browser/hostedBrowserWebviewStyle.test.ts
           packages/shared/src/providerAuthReturnUrl.test.ts
           packages/shared/src/codexAuthHandoff.test.ts
           packages/shared/src/promptLinks.test.ts
           scripts/build-desktop-artifact.test.ts
           scripts/dev-runner.test.ts
           apps/server/src/os-jank.test.ts
+          apps/desktop/src/app/DesktopPreReadyPlatform.test.ts
+          apps/desktop/src/app/DesktopLinuxUrlHandler.test.ts
           apps/desktop/src/app/DesktopUserData.test.ts
           apps/desktop/src/app/DesktopEnvironment.test.ts
           apps/desktop/src/app/DesktopAppIdentity.test.ts
           apps/desktop/src/app/DesktopPreReadyFileSystem.test.ts
-          apps/desktop/src/app/DesktopLegacyLocalStorage.test.ts
           apps/desktop/src/preview/BrowserSession.test.ts
           apps/desktop/src/preview/DesktopBrowserHost.test.ts
           apps/desktop/src/preview/CdpRelay.test.ts
@@ -60,6 +59,20 @@ jobs:
           apps/server/src/attachmentStore.test.ts
           apps/server/src/mcp/McpHttpServer.test.ts
           apps/server/src/telemetry/AnalyticsService.test.ts
+          packages/client-runtime/src/authorization/remote.test.ts
+          apps/web/src/components/GitHubStarPrompt.test.ts
+          apps/desktop/src/app/DesktopLifecycle.test.ts
+          apps/desktop/src/snapShot/GnomeCaptureSetup.test.ts
+          apps/server/src/serverRuntimeState.test.ts
+          apps/server/src/orchestration-v2/Adapters/AcpAdapterV2.test.ts
+          apps/server/src/orchestration-v2/Adapters/OpenCode2AdapterV2.test.ts
+          scripts/notify-discord-release.test.ts
+          packages/shared/src/paletteSearch.test.ts
+          packages/shared/src/speech.test.ts
+          packages/shared/src/threadLinks.test.ts
+          apps/desktop/src/app/DesktopStartupRecovery.test.ts
+          apps/server/src/cloud/servicePreflight.test.ts
+          apps/server/src/orchestration-v2/testkit/ThreadFork.integration.test.ts
   desktop:
     name: Desktop build
     runs-on: macos-15

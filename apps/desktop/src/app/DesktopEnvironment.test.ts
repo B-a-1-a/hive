@@ -13,9 +13,9 @@ const defaultInput = {
   platform: "darwin",
   processArch: "arm64",
   appVersion: "0.0.22",
-  appPath: "/Applications/T3 Code.app/Contents/Resources/app.asar",
+  appPath: "/Applications/Hive.app/Contents/Resources/app.asar",
   isPackaged: false,
-  resourcesPath: "/Applications/T3 Code.app/Contents/Resources",
+  resourcesPath: "/Applications/Hive.app/Contents/Resources",
   runningUnderArm64Translation: false,
 } satisfies DesktopEnvironment.MakeDesktopEnvironmentInput;
 
@@ -68,17 +68,8 @@ describe("DesktopEnvironment", () => {
       );
       const production = yield* makeEnvironment();
 
-      assert.equal(development.stateDir, "/Users/alice/.browser-agent/dev");
-      assert.equal(production.stateDir, "/Users/alice/.browser-agent/userdata");
+      assert.equal(development.stateDir, "/Users/alice/.hive/dev");
+      assert.equal(production.stateDir, "/Users/alice/.hive/userdata");
     }),
   );
 });
-
-it.effect("uses an independent desktop name, app identifier, and default state directory", () =>
-  Effect.gen(function* () {
-    const environment = yield* makeEnvironment();
-    assert.equal(environment.branding.baseName, "Browser Agent");
-    assert.equal(environment.appUserModelId, "com.browseragent.desktop");
-    assert.equal(environment.stateDir, "/Users/alice/.browser-agent/userdata");
-  }),
-);

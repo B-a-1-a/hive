@@ -40,8 +40,8 @@ export const resolveUserDataPath = Effect.fn("desktop.userData.resolveUserDataPa
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const names = input.isDevelopment
-      ? { current: "browser-agent-dev", legacy: "Browser Agent (Dev)" }
-      : { current: "browser-agent", legacy: "Browser Agent (Alpha)" };
+      ? { current: "hive-dev", legacy: "Hive (Dev)" }
+      : { current: "hive", legacy: "Hive (Alpha)" };
     const destinationPath = path.join(input.appDataDirectory, names.current);
     const legacyPath = path.join(input.appDataDirectory, names.legacy);
     const inspect = (resourcePath: string) =>
@@ -62,7 +62,7 @@ export const resolveUserDataPath = Effect.fn("desktop.userData.resolveUserDataPa
     const legacyState = path.join(legacyPath, "Local State");
     const sourceState = (yield* inspect(legacyState))
       ? legacyState
-      : path.join(input.appDataDirectory, "browser-agent-legacy", "Local State");
+      : path.join(input.appDataDirectory, "hive-legacy", "Local State");
     if (!(yield* inspect(sourceState))) return destinationPath;
     // Windows safeStorage keys live here. Copy only these preferences, never locked databases.
     const state = yield* fs
@@ -94,4 +94,44 @@ export const resolveUserDataPath = Effect.fn("desktop.userData.resolveUserDataPa
     );
     return destinationPath;
   },
+);
+
+const GPU_CACHE_DIRECTORIES = [
+  "GPUCache",
+  "GrShaderCache",
+  "ShaderCache",
+  "DawnGraphiteCache",
+  "DawnWebGPUCache",
+  "GPUPersistentCache",
+];
+
+// Keyed on Electron, not Chromium: Electron patches ship Chromium backports under the same Chrome version.
+export const clearStaleGpuCaches = Effect.fn("desktop.userData.clearStaleGpuCaches")(
+  function* (input: { readonly userDataPath: string; readonly electronVersion: string }) {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const markerPath = path.join(input.userDataPath, "gpu-cache-electron-version");
+    const cachedVersion = yield* fs.readFileString(markerPath).pipe(
+      Effect.catchIf(
+        (error) => error.reason._tag === "NotFound",
+        () => Effect.undefined,
+      ),
+    );
+    if (cachedVersion?.trim() === input.electronVersion) return;
+    for (const name of GPU_CACHE_DIRECTORIES) {
+      yield* fs.remove(path.join(input.userDataPath, name), { recursive: true, force: true });
+    }
+    yield* fs.makeDirectory(input.userDataPath, { recursive: true });
+    yield* fs.writeFileString(markerPath, input.electronVersion);
+  },
+  (effect, input) =>
+    effect.pipe(
+      Effect.catch((error) =>
+        Effect.logWarning("could not clear stale GPU caches", {
+          userDataPath: input.userDataPath,
+          electronVersion: input.electronVersion,
+          error: error.message,
+        }),
+      ),
+    ),
 );

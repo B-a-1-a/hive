@@ -10,12 +10,12 @@ import type { DesktopCaptureHelperState } from "@t3tools/contracts";
 
 import { escapeDesktopEntryExecArgument } from "../app/DesktopLinuxUrlHandler.ts";
 import type { LinuxWindowSnapshot } from "./LinuxSnapShot.ts";
-import { readPortalPng } from "./linuxCaptureSession.ts";
+import { CaptureSetupRequiredError, readPortalPng } from "./linuxCaptureSession.ts";
 import { startNativeCaptureFeedback } from "./NativeCaptureFeedback.ts";
 export { isKdeCaptureSession } from "./linuxCaptureSession.ts";
 
 export const KDE_CAPTURE_EXECUTABLE = "t3-kde-snap-shot";
-const DESKTOP_FILE = "com.t3tools.T3Code.KdeCapture.desktop";
+const DESKTOP_FILE = "com.hive.desktop.KdeCapture.desktop";
 const MARKER = "X-T3Code-Capture-Helper=true";
 const decodeCapabilities = Schema.decodeUnknownSync(
   Schema.fromJsonString(Schema.Struct({ feedbackAvailable: Schema.optional(Schema.Boolean) })),
@@ -24,7 +24,7 @@ export type KdeCapturePaths = { readonly bundle: string; readonly dataHome: stri
 
 export function kdeCapturePaths(paths: KdeCapturePaths) {
   return {
-    executable: NodePath.join(paths.dataHome, "t3code", "kde-capture", KDE_CAPTURE_EXECUTABLE),
+    executable: NodePath.join(paths.dataHome, "hive", "kde-capture", KDE_CAPTURE_EXECUTABLE),
     desktop: NodePath.join(paths.dataHome, "applications", DESKTOP_FILE),
   };
 }
@@ -33,7 +33,7 @@ function kdeCaptureDesktopEntry(executable: string): string {
   return [
     "[Desktop Entry]",
     "Type=Application",
-    "Name=T3 Code SnapShots",
+    "Name=Hive SnapShots",
     "NoDisplay=true",
     `Exec=${escapeDesktopEntryExecArgument(executable)} check`,
     // KService reads this custom property as a KConfig list, not an XDG ';' list.
@@ -115,7 +115,7 @@ export class KdeCaptureSetup {
       if (!bundle)
         return {
           status: "error",
-          message: "The capture helper is missing from this build. Update or reinstall T3 Code.",
+          message: "The capture helper is missing from this build. Update or reinstall Hive.",
         };
       if (!installed.equals(bundle) || entry.toString() !== kdeCaptureDesktopEntry(executable))
         return {
@@ -159,9 +159,7 @@ export class KdeCaptureSetup {
     } else {
       const bundle = await regularFile(this.paths.bundle);
       if (!bundle)
-        throw new Error(
-          "The capture helper is missing from this build. Update or reinstall T3 Code.",
-        );
+        throw new Error("The capture helper is missing from this build. Update or reinstall Hive.");
       await NodeFSP.mkdir(directory, { recursive: true });
       await NodeFSP.mkdir(NodePath.dirname(desktop), { recursive: true });
       const staging = await NodeFSP.mkdtemp(NodePath.join(directory, ".install-"));
@@ -182,8 +180,7 @@ export class KdeCaptureSetup {
     }
     // KService must see the new desktop entry before KWin checks the executable.
     await run("kbuildsycoca6", ["--noincremental"]);
-    // AppImages change XDG search paths, and KService caches are also locale-specific.
-    // Refresh Plasma's cache in its session environment, not just the app's cache.
+    // AppImage search paths and locale affect KService caches; refresh in Plasma's session environment.
     await run("systemd-run", [
       "--user",
       "--quiet",
@@ -216,8 +213,7 @@ export async function captureKdeWindow(
   options?: { readonly flash: boolean; readonly animate: boolean },
 ): Promise<LinuxWindowSnapshot> {
   const state = await new KdeCaptureSetup(paths).state();
-  if (state.status !== "ready")
-    throw new Error(`${state.message} Open Settings → SnapShots to continue setup.`);
+  if (state.status !== "ready") throw new CaptureSetupRequiredError({ state: state.message });
   const { executable } = kdeCapturePaths(paths);
   const directory = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "t3-kde-capture-"));
   let retained = false;

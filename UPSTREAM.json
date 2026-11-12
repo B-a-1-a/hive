@@ -1,155 +1,150 @@
 {
-  "project": "Browser Agent",
+  "project": "Hive",
   "upstream_repository": "https://github.com/pingdotgg/t3code",
-  "upstream_tag": "v0.1.2",
-  "upstream_commit": "044f07257c9684ae4543bd1e1ebf9c394e9e3830",
-  "upstream_tree": "e1375be63572f876adb8073791e6fe27347bc0d7",
-  "release_url": "https://github.com/pingdotgg/t3code/releases/tag/v0.1.2",
-  "release_published_at": "2026-10-22T20:44:22Z",
-  "imported_on": "2026-10-26",
-  "import_method": "Manual commit-pinned source snapshot; existing destination history retained; no GitHub fork relationship or upstream commit history imported.",
+  "upstream_tag": "v0.1.9",
+  "upstream_commit": "24e77473ecf41bc1f7142529c7911c1c1aae1d76",
+  "release_url": "https://github.com/pingdotgg/t3code/releases/tag/v0.1.9",
+  "imported_on": "2026-11-11",
+  "import_method": "Manual commit-pinned source snapshot; prior Hive history retained. Application source replaced before Hive branding and isolated app identity changes.",
   "source_archive": {
-    "url": "https://api.github.com/repos/pingdotgg/t3code/tarball/044f07257c9684ae4543bd1e1ebf9c394e9e3830",
-    "sha256": "cb82ecbe1d9fcd2200f89a7cff420e6313683baaab2d8bd6468a9c22ae48fb32"
-  },
-  "verification": {
-    "archive_git_tree_matches_upstream": true,
-    "copied_regular_files": 28137,
-    "copied_symlinks": 1,
-    "preserved_gitlinks": 2,
-    "all_copied_entries_verified": true
-  },
-  "path_mappings": {
-    "LICENSE": "LICENSE.upstream",
-    "README.md": "README.upstream.md",
-    ".github/workflows/": ".github/upstream-workflows/t3-v0.1.2/"
+    "sha256": "040b6b3e5640f6c9c84c15d5aa5480902a4351b33c7b37ecb7dce52b5dfc60f8"
   },
   "licenses": {
     "existing_repository": {
       "path": "LICENSE",
-      "spdx": "AGPL-3.0",
       "sha256": "8486a10c4393cee1c25392769ddd3b2d6c242d6ec7928e1414efff7dfb2f07ef"
     },
     "upstream": {
       "path": "LICENSE.upstream",
-      "spdx": "MIT",
       "sha256": "935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43"
-    },
-    "note": "The pre-existing repository license is retained. Imported T3 Code remains attributed to its MIT license; embedded third-party license and notice files are preserved."
+    }
   },
-  "upstream_readme_sha256": "07301caabab983a6f1a6c1542cdad4c3d528233b7e0fabd6d76b089d7387a44c",
+  "upstream_readme_sha256": "7a35e036a7c2d2411d5ee49ea8ee1962475760aa66c060e7ef096dedd86afcfe",
   "archived_workflows": [
     {
+      "original_path": ".github/workflows/agent-context-budget.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/agent-context-budget.yml",
+      "sha256": "967fd42cf1fd712c2861999aff87a15581fa3075c6edfabd04bf5e9da68451e2"
+    },
+    {
       "original_path": ".github/workflows/ci.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/ci.yml",
-      "sha256": "492d0fee353e6238f7ff517c7b5260915e21d475177e4021bec9cae805664aa2"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/ci.yml",
+      "sha256": "c73261641eb47cde92a2bd75c57f7cd0255ee2c1c535adf91dc3659574d561cf"
     },
     {
       "original_path": ".github/workflows/deploy-relay.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/deploy-relay.yml",
-      "sha256": "6f6395ecff7231f09b0b035b373eb7b98378d3d46f0250089817fa006a79bca1"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/deploy-relay.yml",
+      "sha256": "3ffc1fc93dcdb368442b85ee9ebc5272b3bcc79c878da9851035aff0e624767e"
     },
     {
       "original_path": ".github/workflows/desktop-macos-preview-publish.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/desktop-macos-preview-publish.yml",
-      "sha256": "b3b80be8b31c87efbf4939cc9acf91eb3d6ca957ad01369e41dbe390c0569370"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/desktop-macos-preview-publish.yml",
+      "sha256": "cf0ff584e8bffd834a2082c8a796b67fc1677b4a024e42744a81ff333fb0b6c4"
     },
     {
       "original_path": ".github/workflows/desktop-macos-preview.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/desktop-macos-preview.yml",
-      "sha256": "4c2c9359334caa14dc385d18aae361d50eca15ffb4fe102418797b9990a5c0a0"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/desktop-macos-preview.yml",
+      "sha256": "ac3ecb354566007596b62acd1cdca40c104e516a4a02848bfc09bd1005bd2f64"
     },
     {
       "original_path": ".github/workflows/issue-labels.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/issue-labels.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/issue-labels.yml",
       "sha256": "da015735d691b10cdff627d9257aa5e5a677be38aa00dd62593ea61f61c08893"
     },
     {
       "original_path": ".github/workflows/mobile-android-apk.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/mobile-android-apk.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/mobile-android-apk.yml",
       "sha256": "7ebee75f8eb455b2a8708867afab7b92f2d6540705ecdcc52506f63b375b9a00"
     },
     {
+      "original_path": ".github/workflows/mobile-dev-client.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/mobile-dev-client.yml",
+      "sha256": "5c059291a3f20e294dc69d0f0760e00ebe7668c00e4ab4e86119e766b885b84f"
+    },
+    {
+      "original_path": ".github/workflows/mobile-eas-preview-fork.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/mobile-eas-preview-fork.yml",
+      "sha256": "16d589f47edf0e5799cb7a7238ae436946674d95f9f8f2a5746e036fd431c31f"
+    },
+    {
       "original_path": ".github/workflows/mobile-eas-preview.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/mobile-eas-preview.yml",
-      "sha256": "a44def5e389ddf24948e60c079216c52c0c19e1b401447f78811917e27c07b82"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/mobile-eas-preview.yml",
+      "sha256": "abaab7849a0051a61aea9ce6ab0d3cb864406df81577537fd6dec12482c24f2f"
     },
     {
       "original_path": ".github/workflows/mobile-eas-production.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/mobile-eas-production.yml",
-      "sha256": "d1009691db93d8d3ec3c9dfadeaefd83d0bd1dff3551891776d1fa1b6d44ddf3"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/mobile-eas-production.yml",
+      "sha256": "c70d185d6b83310f1ceccc808490687d63dc6efc7e827f311f59edcd31839e00"
     },
     {
       "original_path": ".github/workflows/mobile-fingerprint-check.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/mobile-fingerprint-check.yml",
-      "sha256": "b5015b7949cf4624062c6ef9dc325a1c3c43cf1a0e374059f1131a4da8b8c70f"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/mobile-fingerprint-check.yml",
+      "sha256": "7c6842bd45a77fe303487e15a4296b12fd29b7ebd0c4821964f0e97c0ecce8a2"
+    },
+    {
+      "original_path": ".github/workflows/mobile-fingerprint-label.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/mobile-fingerprint-label.yml",
+      "sha256": "a5c7fef977b0939e7f3925fc337959b47449052900840adac1b7e597ccc47eaa"
     },
     {
       "original_path": ".github/workflows/mobile-showcase-screenshots.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/mobile-showcase-screenshots.yml",
-      "sha256": "bd2c7cbea88b91bb36d350ed58260a26014205d4643579aa33fd96064ec09099"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/mobile-showcase-screenshots.yml",
+      "sha256": "70c420ff8caaeece276822345d0c14d3154d1ec5e509300f523edbf123daf744"
     },
     {
       "original_path": ".github/workflows/pr-size.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/pr-size.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/pr-size.yml",
       "sha256": "4e4bc133fa4cee5b6baa5037734e5e3f931831261a455358af04624e95d855e3"
     },
     {
       "original_path": ".github/workflows/pr-vouch.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/pr-vouch.yml",
-      "sha256": "7de2a8e657c15c1b341f6a7739a2e05c0343b599437e0ce19aa23002eae613f1"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/pr-vouch.yml",
+      "sha256": "84af136ada2966ce6411a683ee7ed5492d2895230b98bae539abaa9e273b1b4a"
     },
     {
       "original_path": ".github/workflows/publish-aur.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/publish-aur.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/publish-aur.yml",
       "sha256": "69f2763db90605df146ae07634ce539f025969fd3be65ae7c496457ba75b2c1c"
     },
     {
+      "original_path": ".github/workflows/relay-preview-cleanup.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/relay-preview-cleanup.yml",
+      "sha256": "a1cd8a92a7f504f0df7754ccb78119522e660ba3b788007c443da5b1d9c53b34"
+    },
+    {
+      "original_path": ".github/workflows/relay-preview.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/relay-preview.yml",
+      "sha256": "c855428e0d268440dcf1528c15e5504b65e5cc5d310f54e52fbabef568e440c9"
+    },
+    {
       "original_path": ".github/workflows/release-desktop.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/release-desktop.yml",
-      "sha256": "fb3824163276eb3287fc6be84b7e37e2055e9f947acb74504e8a5964d72dc31f"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/release-desktop.yml",
+      "sha256": "d6304f296087eedc2c7afd20f2706c67f66286ca5de7c1742798d6f25d2d4b9a"
     },
     {
       "original_path": ".github/workflows/release.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/release.yml",
-      "sha256": "2028f224f80e2f7cdd1ba27b72d7e04d5542b03cd0edba48597891791ca354f4"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/release.yml",
+      "sha256": "34f36e8a5eed04f0c3af5654c3eabfc1f8edafa3600e317c820ea7ed3ef48ac0"
+    },
+    {
+      "original_path": ".github/workflows/stale-needs-more-info.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/stale-needs-more-info.yml",
+      "sha256": "8bed77faa81f25678a8b7a78e919d92175dfb9330aa2c71c3a5abdc63e7fdd52"
     },
     {
       "original_path": ".github/workflows/thread-transfer-report.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/thread-transfer-report.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/thread-transfer-report.yml",
       "sha256": "27f75e88542b0edbd45f64427a628680e0372b88b61b80ee96ccbc59cfac3b2c"
     },
     {
       "original_path": ".github/workflows/web-preview.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/web-preview.yml",
-      "sha256": "63b55c623ff5d57c143213767934b4f5083807d6f7e38941cb1d71cc3b416089"
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/web-preview.yml",
+      "sha256": "b410474a2e62876919f87a471d4ec84805502c012ad483146458f783bbe826ad"
     },
     {
       "original_path": ".github/workflows/windows-tests.yml",
-      "archived_path": ".github/upstream-workflows/t3-v0.1.2/windows-tests.yml",
+      "archived_path": ".github/upstream-workflows/t3-v0.1.9/windows-tests.yml",
       "sha256": "a13296efdcbd68cecf8ec8ec9a96601e6418ae3fb2c8ea6b659b0fa625733a80"
     }
-  ],
-  "gitlinks": [
-    {
-      "path": ".repos/alchemy-effect/submodules/distilled",
-      "commit": "e02e9d405b8848909f4f746b61b12a663f631c7c",
-      "mode": "160000"
-    },
-    {
-      "path": ".repos/alchemy-effect/submodules/floci",
-      "commit": "493909133db04153348eabc503f4e30cf0033d96",
-      "mode": "160000"
-    }
-  ],
-  "toolchain": {
-    "node": "26.12.1",
-    "pnpm": "12.14.0"
-  },
-  "adaptations": [
-    "Preserved destination LICENSE; upstream MIT license stored as LICENSE.upstream.",
-    "Original upstream README stored as README.upstream.md; root README replaced with project placeholder.",
-    "Upstream workflows archived unchanged because they assume upstream runners, accounts and release configuration.",
-    "Added root .gitmodules mappings for the preserved nested reference gitlinks so standard Git checkout and credential cleanup work; automatic submodule updates remain disabled."
   ]
 }

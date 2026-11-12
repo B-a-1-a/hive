@@ -1,8 +1,8 @@
-import { useAtomValue } from "@effect/atom-react";
-import { settlePromise, squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import { useAtom, useAtomValue } from "@effect/atom-react";
+import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import type { EnvironmentId } from "@t3tools/contracts";
 import { AsyncResult } from "effect/reactivity";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { View } from "react-native";
 
 import { AppText as Text } from "../../components/ui/AppText";
@@ -13,9 +13,13 @@ import {
   updateOutdatedServer,
 } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
-import { SettingsActionRow } from "./components/SettingsActionRow";
+import { ListActionRow as SettingsActionRow } from "../../components/ui/ListActionRow";
 import { SettingsSection } from "./components/SettingsSection";
-import { findEnvironmentUpdate } from "./environment-maintenance";
+import {
+  environmentReleaseCheckAtom,
+  releaseCheckError,
+  releaseCheckValue,
+} from "./environmentUpdateCheck";
 
 export function OutdatedServerUpdateSection({
   environmentId,
@@ -27,37 +31,22 @@ export function OutdatedServerUpdateSection({
   const describe = useAtomCommand(describeOutdatedServer, { reportFailure: false });
   const update = useAtomCommand(updateOutdatedServer, { reportFailure: false });
   const state = useAtomValue(serverEnvironment.updateStateAtom(environmentId));
-  const [release, setRelease] = useState<{
-    fromVersion: string;
-    targetVersion: string | null;
-  } | null>(null);
-  const [checking, setChecking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const controller = useRef<AbortController | null>(null);
-  useEffect(() => () => controller.current?.abort(), []);
+  const [checkResult, startCheck] = useAtom(environmentReleaseCheckAtom(environmentId));
+  const release = releaseCheckValue(checkResult);
+  const checking = checkResult.waiting;
+  // Starting an update replaces a failed check's message with the update's own state.
+  const [checkErrorDismissed, setCheckErrorDismissed] = useState(false);
+  const error = checkErrorDismissed ? null : releaseCheckError(checkResult);
   const busy = checking || state.status === "running";
 
-  async function check() {
-    if (busy || controller.current !== null) return;
-    const request = new AbortController();
-    controller.current = request;
-    setChecking(true);
-    setError(null);
-    const timeout = setTimeout(() => request.abort(), 20_000);
-    const result = await settlePromise(async () => {
+  function check() {
+    if (busy) return;
+    setCheckErrorDismissed(false);
+    startCheck(async () => {
       const description = await describe(environmentId);
       if (AsyncResult.isFailure(description)) throw squashAtomCommandFailure(description);
-      const fromVersion = description.value.serverVersion;
-      const targetVersion = await findEnvironmentUpdate(fromVersion, request.signal);
-      if (!request.signal.aborted) setRelease({ fromVersion, targetVersion });
+      return description.value.serverVersion;
     });
-    clearTimeout(timeout);
-    controller.current = null;
-    setChecking(false);
-    if (AsyncResult.isFailure(result)) {
-      const failure = squashAtomCommandFailure(result);
-      setError(failure instanceof Error ? failure.message : "Could not check for updates.");
-    }
   }
 
   function requestUpdate() {
@@ -65,13 +54,13 @@ export function OutdatedServerUpdateSection({
     if (busy || !release || !targetVersion) return;
     Dialog.alert(
       `Update ${label}?`,
-      `Install T3 Code ${targetVersion}. T3 Code restarts on that machine and reconnects. Running threads may be interrupted.`,
+      `Install Hive ${targetVersion}. Hive restarts on that machine and reconnects. Running threads may be interrupted.`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Update",
           onPress: () => {
-            setError(null);
+            setCheckErrorDismissed(true);
             void update({
               environmentId,
               input: { targetVersion },
@@ -84,7 +73,7 @@ export function OutdatedServerUpdateSection({
   }
 
   return (
-    <SettingsSection title="T3 Code">
+    <SettingsSection title="Hive">
       <View className="gap-1 p-4">
         <Text className="text-base text-foreground">
           {release ? `Version ${release.fromVersion}` : "Update required"}
@@ -100,7 +89,7 @@ export function OutdatedServerUpdateSection({
               ? release.targetVersion
                 ? `Version ${release.targetVersion} is available.`
                 : "No newer version is available yet."
-              : "This app needs a newer version of T3 Code on this machine."}
+              : "This app needs a newer version of Hive on this machine."}
         </Text>
         {error || state.status === "failed" ? (
           <Text selectable accessibilityRole="alert" className="text-sm text-danger-foreground">
@@ -113,7 +102,7 @@ export function OutdatedServerUpdateSection({
         label="Check for updates"
         disabled={busy}
         loading={checking}
-        onPress={() => void check()}
+        onPress={check}
       />
       {release?.targetVersion ? (
         <SettingsActionRow

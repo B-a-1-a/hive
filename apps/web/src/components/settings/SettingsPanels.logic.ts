@@ -163,7 +163,7 @@ export function getChangedBrowserSettingLabels(settings: BrowserDefaultSettings)
       ? ["Floating preview"]
       : []),
     ...(settings.pullRequestLinksOpenInApp !== DEFAULT_UNIFIED_SETTINGS.pullRequestLinksOpenInApp
-      ? ["Open pull requests in T3 Code"]
+      ? ["Open pull requests in Hive"]
       : []),
   ];
 }
@@ -181,7 +181,6 @@ export function resolveBackgroundActivityProfileOption(
       providerHealthRefreshInterval: resolved.providerHealthRefreshInterval,
       hostPowerMonitorActiveInterval: resolved.hostPowerMonitorActiveInterval,
       hostPowerMonitorIdleInterval: resolved.hostPowerMonitorIdleInterval,
-      idleClientTtl: resolved.idleClientTtl,
       pauseWhenHostLocked: resolved.pauseWhenHostLocked,
       pauseWhenHostLowPower: resolved.pauseWhenHostLowPower,
       pauseWhenClientLowPower: resolved.pauseWhenClientLowPower,
@@ -252,7 +251,6 @@ export function backgroundActivityOverrideSettings(
     providerHealthRefreshInterval: resolved.providerHealthRefreshInterval,
     hostPowerMonitorActiveInterval: resolved.hostPowerMonitorActiveInterval,
     hostPowerMonitorIdleInterval: resolved.hostPowerMonitorIdleInterval,
-    idleClientTtl: resolved.idleClientTtl,
     pauseWhenHostLocked: resolved.pauseWhenHostLocked,
     pauseWhenHostLowPower: resolved.pauseWhenHostLowPower,
     pauseWhenClientLowPower: resolved.pauseWhenClientLowPower,

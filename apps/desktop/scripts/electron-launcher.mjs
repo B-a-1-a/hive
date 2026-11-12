@@ -13,11 +13,11 @@ const repoRoot = NodePath.resolve(desktopDir, "..", "..");
 const devBundleIdSuffix = NodePath.basename(repoRoot)
   .toLowerCase()
   .replaceAll(/[^a-z0-9]+/g, "");
-const APP_DISPLAY_NAME = isDevelopment ? "Browser Agent (Dev)" : "Browser Agent (Beta)";
+const APP_DISPLAY_NAME = isDevelopment ? "Hive (Dev)" : "Hive (Beta)";
 const APP_BUNDLE_ID = isDevelopment
-  ? `com.browseragent.desktop.dev.${devBundleIdSuffix || "local"}`
-  : "com.browseragent.desktop";
-const APP_PROTOCOL_SCHEMES = isDevelopment ? ["browser-agent-dev"] : ["browser-agent"];
+  ? `com.hive.desktop.dev.${devBundleIdSuffix || "local"}`
+  : "com.hive.desktop";
+const APP_PROTOCOL_SCHEMES = isDevelopment ? ["hive-dev"] : ["hive"];
 const LAUNCHER_VERSION = 20;
 const developmentMacIconPngPath = NodePath.join(
   repoRoot,
@@ -268,8 +268,8 @@ function resolveMacBundleInfoPlistStrings(executableName) {
     CFBundleExecutable: executableName,
     CFBundleIconFile: "icon.icns",
     NSScreenCaptureUsageDescription:
-      "T3 Code captures the active window when you use the snapshot shortcut.",
-    NSDocumentsFolderUsageDescription: "T3 Code reads project files you open in the desktop app.",
+      "Hive captures the active window when you use the snapshot shortcut.",
+    NSDocumentsFolderUsageDescription: "Hive reads project files you open in the desktop app.",
   };
 }
 
@@ -372,9 +372,7 @@ function buildMacLauncher(electronBinaryPath) {
     JSON.stringify(currentMetadata) === JSON.stringify(expectedMetadata)
   ) {
     if (isDevelopment) {
-      // The launcher also handles protocol activations outside the dev runner,
-      // so refresh its fallback environment on every launch. Never let a value
-      // captured by an older parent app override the live dev-runner environment.
+      // Protocol activations bypass the dev runner, so refresh the fallback environment on every launch.
       writeDevelopmentEnvironmentScript();
       if (writeDevelopmentLauncherScript(launcherBinaryPath, runtimeElectronBinaryPath)) {
         signMacLauncherBundle(targetAppBundlePath);
@@ -385,10 +383,7 @@ function buildMacLauncher(electronBinaryPath) {
   }
 
   NodeFS.rmSync(targetAppBundlePath, { recursive: true, force: true });
-  // verbatimSymlinks keeps the framework's relative symlinks intact
-  // (e.g. Resources -> Versions/Current/Resources). Without it cpSync
-  // rewrites them to absolute paths into node_modules, which escape the
-  // bundle and crash sandboxed helper processes (icudtl.dat not found).
+  // Without verbatimSymlinks, cpSync makes framework symlinks point outside the bundle and crashes helpers.
   NodeFS.cpSync(sourceAppBundlePath, targetAppBundlePath, {
     recursive: true,
     verbatimSymlinks: true,
@@ -400,10 +395,7 @@ function buildMacLauncher(electronBinaryPath) {
   );
   patchHelperBundleInfoPlists(targetAppBundlePath);
   if (isDevelopment) {
-    // Launching the node_modules copy makes macOS associate the process (and Dock label) with
-    // Electron.app even though this bundle's Info.plist has the T3 Code name. Its conventional
-    // executable name also keeps Electron's default-app runtime in development mode instead of
-    // making app.isPackaged report true.
+    // Electron.app's executable name keeps default-app mode active without making app.isPackaged true.
     writeDevelopmentEnvironmentScript();
     writeDevelopmentLauncherScript(launcherBinaryPath, runtimeElectronBinaryPath);
   }

@@ -135,6 +135,12 @@ const suppressMentions = (text: string) =>
 
 const escapeLinkLabel = (text: string) => text.replace(/[\\[\]]/g, "\\$&");
 
+/** GitHub links `(#123)` on the release page; Discord needs the link written out. */
+function linkPullRequestNumbers(notes: string, releaseUrl: URL) {
+  const repositoryUrl = releaseUrl.href.split("/releases/")[0];
+  return notes.replace(/#(\d+)\b/g, `[#$1](${repositoryUrl}/pull/$1)`);
+}
+
 function formatReleaseNotes(notes: string) {
   return notes
     .replace(
@@ -191,15 +197,20 @@ export const buildDiscordReleaseAnnouncement = (
 
   const intro =
     options.target === "prerelease"
-      ? "A new T3 Code prerelease is available for nightly testers."
+      ? "A new Hive prerelease is available for nightly testers."
       : `[View full release notes on GitHub](${options.releaseUrl.href})`;
+  // Generated summaries fold the full list under <details>, which Discord cannot render.
+  const [summary = "", folded] = (options.releaseNotes ?? "").split(/^<details>/m);
   const notes =
     options.target === "prerelease"
-      ? suppressMentions(formatReleaseNotes(options.releaseNotes?.trim() ?? ""))
+      ? suppressMentions(
+          folded === undefined
+            ? formatReleaseNotes(summary.trim())
+            : `${linkPullRequestNumbers(summary.trim(), options.releaseUrl)}\n\n[Full changelog](${options.releaseUrl.href})`,
+        )
       : "";
   const description = notes ? `${intro}\n\n${notes}` : intro;
-  // One embed per message avoids Discord's URL deduplication. Reserve a full
-  // title and the version footer within the 6000-character aggregate limit.
+  // Separate embeds avoid URL deduplication; reserve title and footer space within Discord's 6000-character limit.
   const limit = Math.min(4096, 6000 - 256 - footerText.length);
   const descriptions = splitDescription(description, limit);
 
@@ -381,7 +392,7 @@ export const notifyDiscordReleaseCommand = Command.make(
       }
       yield* Effect.logInfo("discord release announcement completed");
     }),
-).pipe(Command.withDescription("Post a T3 Code release announcement to Discord."));
+).pipe(Command.withDescription("Post a Hive release announcement to Discord."));
 
 if (import.meta.main) {
   Command.run(notifyDiscordReleaseCommand, { version: "0.0.0" }).pipe(

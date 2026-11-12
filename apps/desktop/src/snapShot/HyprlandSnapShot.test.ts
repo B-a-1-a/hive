@@ -18,6 +18,7 @@ import {
   hyprlandCaptureExecutable,
   hyprlandCaptureShortcut,
 } from "./HyprlandSnapShot.ts";
+import { CaptureSetupRequiredError } from "./linuxCaptureSession.ts";
 
 let directory: string;
 let paths: { bundle: string; dataHome: string };
@@ -86,6 +87,20 @@ it("updates explicitly and removes only its helper", async () => {
   expect((await setup.state()).status).toBe("not-installed");
   expect(await NodeFSP.readFile(unrelated, "utf8")).toBe("keep");
 });
+it("updates a helper left stale by an app update before capturing", async () => {
+  await setup.perform("install-hyprland-helper");
+  await NodeFSP.writeFile(paths.bundle, "update");
+  const result = await captureHyprlandWindow(paths);
+  expect(result.png).toEqual(png);
+  expect(await NodeFSP.readFile(hyprlandCaptureExecutable(paths), "utf8")).toBe("update");
+  result.feedback?.close();
+});
+it("leaves first-time installation to explicit setup", async () => {
+  await expect(captureHyprlandWindow(paths)).rejects.toBeInstanceOf(CaptureSetupRequiredError);
+  await expect(NodeFSP.stat(hyprlandCaptureExecutable(paths))).rejects.toMatchObject({
+    code: "ENOENT",
+  });
+});
 it("does not overwrite a linked executable", async () => {
   const executable = hyprlandCaptureExecutable(paths);
   await NodeFSP.mkdir(NodePath.dirname(executable), { recursive: true });
@@ -104,14 +119,14 @@ it.each([true, false])("uses the active config syntax and user bindings (Lua: %s
     NodePath.join(config, lua ? "bindings.lua" : "bindings.conf"),
     "custom bindings",
   );
-  const result = await hyprlandCaptureShortcut("com.t3tools.T3Code", "/home/test", directory);
+  const result = await hyprlandCaptureShortcut("com.hive.desktop", "/home/test", directory);
   expect(result.shortcutConfigPath).toBe(
     NodePath.join(config, lua ? "bindings.lua" : "bindings.conf"),
   );
   expect(result.shortcutBinding).toBe(
     lua
-      ? 'hl.bind("CTRL + SHIFT + 2", hl.dsp.global("com.t3tools.T3Code:capture-window"))'
-      : "bind = CTRL SHIFT, 2, global, com.t3tools.T3Code:capture-window",
+      ? 'hl.bind("CTRL + SHIFT + 2", hl.dsp.global("com.hive.desktop:capture-window"))'
+      : "bind = CTRL SHIFT, 2, global, com.hive.desktop:capture-window",
   );
   expect(await NodeFSP.readFile(result.shortcutConfigPath, "utf8")).toBe("custom bindings");
 });

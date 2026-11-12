@@ -21,7 +21,7 @@ import {
 const latestAnnouncement = {
   target: "latest",
   roleId: "222222222222222222",
-  releaseName: "T3 Code v1.2.3",
+  releaseName: "Hive v1.2.3",
   version: "1.2.3",
   tag: "v1.2.3",
   releaseUrl: new URL("https://github.com/pingdotgg/t3code/releases/tag/v1.2.3"),
@@ -29,7 +29,7 @@ const latestAnnouncement = {
 } as const;
 const nightlyAnnouncement = { ...latestAnnouncement, target: "prerelease" } as const;
 const webhookUrl = new URL("https://discord.com/api/webhooks/123456/test-secret-token");
-const intro = "A new T3 Code prerelease is available for nightly testers.";
+const intro = "A new Hive prerelease is available for nightly testers.";
 const notes = `## What's Changed\n* Fix remote reconnection by @contributor in https://github.com/pingdotgg/t3code/pull/10\n* Improve thread search in https://github.com/pingdotgg/t3code/pull/11\n\n**Full Changelog**: https://github.com/pingdotgg/t3code/compare/v1.2.2...v1.2.3`;
 const formattedNotes = `## What's Changed\n* [Fix remote reconnection](https://github.com/pingdotgg/t3code/pull/10) by [@contributor](https://github.com/contributor)\n* [Improve thread search](https://github.com/pingdotgg/t3code/pull/11)\n\n[Full Changelog](https://github.com/pingdotgg/t3code/compare/v1.2.2...v1.2.3)`;
 const runCli = Command.runWith(notifyDiscordReleaseCommand, { version: "0.0.0" });
@@ -129,6 +129,15 @@ it("preserves custom notes and links outside generated GitHub pull request entri
   assert.equal(
     payloadDescription(buildDiscordReleaseAnnouncement({ ...nightlyAnnouncement, releaseNotes })),
     `${intro}\n\n${releaseNotes}`,
+  );
+});
+
+it("posts a generated summary without its folded full list", () => {
+  const summary = "**v1.2.3** · 4 changes\n\n## Fixes\n- Stop works again (#1)";
+  const releaseNotes = `${summary}\n\n<details>\n<summary>Full changelog</summary>\n\n* fix: raw by @someone in https://github.com/pingdotgg/t3code/pull/1\n\n</details>\n`;
+  assert.equal(
+    payloadDescription(buildDiscordReleaseAnnouncement({ ...nightlyAnnouncement, releaseNotes })),
+    `${intro}\n\n**v1.2.3** · 4 changes\n\n## Fixes\n- Stop works again ([#1](https://github.com/pingdotgg/t3code/pull/1))\n\n[Full changelog](${nightlyAnnouncement.releaseUrl.href})`,
   );
 });
 
@@ -330,7 +339,9 @@ it.layer(NodeServices.layer)("Discord release CLI and workflow", (it) => {
       const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
       const temp = yield* fs.makeTempDirectoryScoped({ prefix: "discord release " });
       const workflow = yield* fs.readFileString(
-        yield* path.fromFileUrl(new URL("../.github/workflows/release.yml", import.meta.url)),
+        yield* path.fromFileUrl(
+          new URL("../.github/upstream-workflows/t3-v0.1.9/release.yml", import.meta.url),
+        ),
       );
       const publishedNotes =
         Array.from({ length: 50 }, () => notes).join("\n\n") +

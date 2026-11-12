@@ -1,4 +1,6 @@
 // @effect-diagnostics globalTimers:off -- The Node socket client owns its response deadline and clears it on every completion path.
+// @effect-diagnostics-next-line nodeBuiltinImport:off -- Effect stat follows symlinks; IPC ownership validation requires lstat.
+import * as NodeFSP from "node:fs/promises";
 import * as NodeNet from "node:net";
 import * as NodeOS from "node:os";
 
@@ -9,11 +11,14 @@ import {
   type DesktopAppActivationPlatform,
   type DesktopAppActivationRequest,
 } from "@t3tools/contracts";
-import { resolveDesktopAppControlAddress } from "@t3tools/shared/desktopAppControl";
+import {
+  resolveDesktopAppControlAddress,
+  type DesktopAppControlAddress,
+} from "@t3tools/shared/desktopAppControl";
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
-import * as Crypto from "effect/Crypto";
+import * as SecureRandom from "effect/crypto/SecureRandom";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
@@ -55,7 +60,7 @@ export class DesktopAppUnreachableError extends Schema.TaggedError<DesktopAppUnr
   },
 ) {
   override get message(): string {
-    return "Could not reach the T3 Code desktop app. Start or update the desktop app on this machine, then run `t3 app` again. A running T3 Code server is not enough.";
+    return "Could not reach the Hive desktop app. Start or update the desktop app on this machine, then run `t3 app` again. A running Hive server is not enough.";
   }
 }
 
@@ -69,7 +74,7 @@ export class DesktopAppRequestFailedError extends Schema.TaggedError<DesktopAppR
   },
 ) {
   override get message(): string {
-    return `T3 Code could not open ${this.workspaceRoot} (${this.code}).`;
+    return `Hive could not open ${this.workspaceRoot} (${this.code}).`;
   }
 }
 
@@ -77,14 +82,26 @@ function isDesktopPlatform(platform: NodeJS.Platform): platform is DesktopAppAct
   return platform === "darwin" || platform === "linux" || platform === "win32";
 }
 
-function sendDesktopAppActivationRequest(input: {
-  readonly address: string;
-  readonly fallbackAddress?: string;
+async function sendDesktopAppActivationRequest(input: {
+  readonly address: DesktopAppControlAddress;
+  readonly fallbackAddress?: DesktopAppControlAddress;
+  readonly userId: number | undefined;
   readonly request: DesktopAppActivationRequest;
   readonly timeoutMs?: number;
 }): Promise<DesktopAppActivationResponse> {
+  if (input.address.directory !== null) {
+    const stat = await NodeFSP.lstat(input.address.directory);
+    if (
+      !stat.isDirectory() ||
+      input.userId === undefined ||
+      stat.uid !== input.userId ||
+      (stat.mode & 0o077) !== 0
+    ) {
+      throw new Error("The desktop app socket directory is not private or owned by this user.");
+    }
+  }
   return new Promise((resolve, reject) => {
-    const socket = NodeNet.createConnection(input.address);
+    const socket = NodeNet.createConnection(input.address.address);
     socket.setEncoding("utf8");
     let buffer = "";
     let settled = false;
@@ -159,6 +176,7 @@ function sendDesktopAppActivationRequest(input: {
         resolve(
           sendDesktopAppActivationRequest({
             address: input.fallbackAddress,
+            userId: input.userId,
             request: input.request,
             ...(input.timeoutMs === undefined ? {} : { timeoutMs: input.timeoutMs }),
           }),
@@ -207,9 +225,9 @@ const runAppCommand = Effect.fn("cli.app")(function* (flags: {
       tempDir: NodeOS.tmpdir(),
       userId,
       joinPath: path.join,
-    }).address;
-  const crypto = yield* Crypto.Crypto;
-  const requestId = yield* crypto.randomUUIDv4().pipe(Effect.orDie);
+    });
+  const random = yield* SecureRandom.SecureRandom;
+  const requestId = yield* random.uuidV4();
   const request: DesktopAppActivationRequest = {
     version: DESKTOP_APP_ACTIVATION_PROTOCOL_VERSION,
     requestId,
@@ -224,12 +242,16 @@ const runAppCommand = Effect.fn("cli.app")(function* (flags: {
     try: () =>
       sendDesktopAppActivationRequest({
         address,
+        userId,
         ...(fallbackAddress === undefined ? {} : { fallbackAddress }),
         request,
       }),
     catch: (cause) =>
       new DesktopAppUnreachableError({
-        candidateAddresses: fallbackAddress === undefined ? [address] : [address, fallbackAddress],
+        candidateAddresses:
+          fallbackAddress === undefined
+            ? [address.address]
+            : [address.address, fallbackAddress.address],
         requestId: request.requestId,
         workspaceRoot,
         cause,
@@ -244,7 +266,7 @@ const runAppCommand = Effect.fn("cli.app")(function* (flags: {
     });
   }
 
-  yield* Console.log(`Opened ${workspaceRoot} in T3 Code.`);
+  yield* Console.log(`Opened ${workspaceRoot} in Hive.`);
 });
 
 export const appCommand = Command.make("app", {
@@ -254,6 +276,6 @@ export const appCommand = Command.make("app", {
     Argument.optional,
   ),
 }).pipe(
-  Command.withDescription("Open a project in the running T3 Code desktop app."),
+  Command.withDescription("Open a project in the running Hive desktop app."),
   Command.withHandler(runAppCommand),
 );

@@ -77,16 +77,16 @@ export function clientPresentationMetadata(input: {
 }): AuthClientPresentationMetadata {
   if (input.desktopBridge !== undefined) {
     return {
-      label: "T3 Code Desktop",
+      label: "Hive Desktop",
       deviceType: "desktop",
-      os: clientOsFromElectronPlatform(input.desktopBridge.getClientPlatform?.()),
+      os: clientOsFromElectronPlatform(input.desktopBridge.getClientPlatform()),
       surface: "desktop",
       ...(input.appVersion === "0.0.0" ? {} : { appVersion: input.appVersion }),
     };
   }
 
   return {
-    label: "T3 Code Web",
+    label: "Hive Web",
     deviceType: browserDeviceType(input.identity),
     os: browserClientOs(input.identity),
     surface: "web",

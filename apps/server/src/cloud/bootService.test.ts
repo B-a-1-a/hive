@@ -7,6 +7,7 @@ import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
+import { CliError } from "effect/cli";
 import { HttpClient } from "effect/http";
 import * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
@@ -26,12 +27,12 @@ it("reads the served T3 home back out of a rendered unit or plist", () => {
     program: [`${baseDir}/runtime/versions/1.2.3/t3`, "__service-launcher"],
     baseDir,
     logPath: `${baseDir}/userdata/logs/boot-service.log`,
-    unitPath: "/home/theo/.config/systemd/user/t3code.service",
+    unitPath: "/home/theo/.config/systemd/user/hive.service",
   });
 
   expect(
-    BootService.bootServiceBaseDirOf(BootService.renderBootServiceUnit(plan("/home/theo/.t3"))),
-  ).toBe("/home/theo/.t3");
+    BootService.bootServiceBaseDirOf(BootService.renderBootServiceUnit(plan("/home/theo/.hive"))),
+  ).toBe("/home/theo/.hive");
   expect(
     BootService.bootServiceBaseDirOf(
       BootService.renderBootServiceUnit(plan("/home/theo/T3 Data/100%")),
@@ -46,6 +47,25 @@ it("reads the served T3 home back out of a rendered unit or plist", () => {
     ),
   ).toBe("/Users/theo/a&b");
   expect(BootService.bootServiceBaseDirOf("[Service]\nExecStart=/x\n")).toBeUndefined();
+});
+
+it("protects the server unit from agents under CPU and memory pressure", () => {
+  const unit = BootService.renderBootServiceUnit({
+    program: ["/home/theo/.hive/runtime/versions/1.2.3/t3", "__service-launcher"],
+    baseDir: "/home/theo/.hive",
+    logPath: "/home/theo/.hive/userdata/logs/boot-service.log",
+    unitPath: "/home/theo/.config/systemd/user/hive.service",
+  });
+  const service = unit.slice(unit.indexOf("[Service]"), unit.indexOf("[Install]"));
+  for (const line of [
+    "CPUWeight=1000",
+    "IOWeight=1000",
+    "MemoryLow=1536M",
+    "OOMScoreAdjust=100",
+    "OOMPolicy=continue",
+  ]) {
+    expect(service.split("\n")).toContain(line);
+  }
 });
 
 it.each([
@@ -71,11 +91,20 @@ const macInstallerPath =
 const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
   platform: NodeJS.Platform = "linux",
   installerPath = macInstallerPath,
+  xdgConfigHome?: string,
+  managerXdgConfigHome = xdgConfigHome,
 ) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
   const home = yield* fs.makeTempDirectoryScoped({ prefix: "t3-boot-service-test-" });
-  const baseDir = path.join(home, ".t3");
+  const managerUnitDir = path.join(
+    managerXdgConfigHome !== undefined && path.isAbsolute(managerXdgConfigHome)
+      ? managerXdgConfigHome
+      : path.join(home, ".config"),
+    "systemd",
+    "user",
+  );
+  const baseDir = path.join(home, ".hive");
   const statePath = path.join(baseDir, "runtime", "service-state.json");
   const runtime = pinnedRuntimePaths(path, baseDir, "1.2.3", platform);
   yield* fs.makeDirectory(path.dirname(runtime.entryPath), { recursive: true });
@@ -108,28 +137,39 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
       const failed = command === control.failCommand;
       if (!failed && command === "loginctl enable-linger --no-ask-password 501")
         control.linger = "yes";
-      if (!failed && command === "systemctl --user enable t3code.service") control.enabled = true;
-      if (!failed && command === "systemctl --user restart t3code.service") control.active = true;
-      // A stop that fails (a timeout, say) has still stopped the service.
-      if (command === "systemctl --user stop t3code.service") control.active = false;
+      if (!failed && command === "systemctl --user enable hive.service") control.enabled = true;
+      if (!failed && command === "systemctl --user restart hive.service") control.active = true;
+      // A timed-out stop may still stop the service.
+      if (command === "systemctl --user stop hive.service") control.active = false;
       if (
         control.stateAfterStop !== undefined &&
-        (command === "systemctl --user stop t3code.service" ||
+        (command === "systemctl --user stop hive.service" ||
           command.startsWith("launchctl bootout --wait "))
       ) {
         yield* fs.writeFileString(statePath, control.stateAfterStop).pipe(Effect.orDie);
       }
       return {
         stdout:
-          input.args[0] === "--version"
-            ? `t3 v${/versions\/([^/]+)\//.exec(input.command)?.[1] ?? "1.2.3"}\n`
-            : input.command === "loginctl" && input.args[0] === "show-user"
-              ? `${control.linger}\n`
-              : input.args[1] === "is-enabled"
-                ? control.enabled
-                  ? "enabled\n"
-                  : "disabled\n"
-                : "",
+          input.command === "busctl"
+            ? JSON.stringify({
+                type: "as",
+                data: [
+                  "/usr/lib/systemd/user",
+                  `${managerUnitDir}.control`,
+                  "/run/user/501/systemd/transient",
+                  managerUnitDir,
+                  "/etc/systemd/user",
+                ],
+              })
+            : input.args[0] === "--version"
+              ? `t3 v${/versions\/([^/]+)\//.exec(input.command)?.[1] ?? "1.2.3"}\n`
+              : input.command === "loginctl" && input.args[0] === "show-user"
+                ? `${control.linger}\n`
+                : input.args[1] === "is-enabled"
+                  ? control.enabled
+                    ? "enabled\n"
+                    : "disabled\n"
+                  : "",
         stderr: "",
         code: ChildProcessSpawner.ExitCode(
           failed ||
@@ -151,6 +191,7 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
     cliVersion = "1.2.3",
     serviceBaseDir = baseDir,
     insideService = false,
+    hostExecPath = "/usr/bin/t3",
   ) =>
     Effect.gen(function* () {
       const paths = pinnedRuntimePaths(path, serviceBaseDir, cliVersion, platform);
@@ -161,7 +202,7 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
         baseDir: serviceBaseDir,
         logsDir: path.join(serviceBaseDir, "userdata", "logs"),
         cliVersion,
-        host: { execPath: "/usr/bin/t3" },
+        host: { execPath: hostExecPath },
       });
     }).pipe(
       Effect.provideService(ProcessRunner.ProcessRunner, runner),
@@ -169,7 +210,7 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
         Layer.mergeAll(
           Layer.succeed(HostProcess.Platform, platform),
           Layer.succeed(HostProcess.UserId, 501),
-          Layer.succeed(HostProcess.ExecutablePath, "/usr/bin/t3"),
+          Layer.succeed(HostProcess.ExecutablePath, hostExecPath),
           Layer.succeed(
             HttpClient.HttpClient,
             HttpClient.make(() => Effect.die("no release download expected")),
@@ -178,10 +219,11 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
             ConfigProvider.fromEnv({
               env: {
                 HOME: home,
+                ...(xdgConfigHome === undefined ? {} : { XDG_CONFIG_HOME: xdgConfigHome }),
                 ...(environmentPath === undefined || environmentPath === ""
                   ? {}
                   : { PATH: environmentPath }),
-                ...(insideService ? { T3_BOOT_SERVICE_UNIT: "t3code.service" } : {}),
+                ...(insideService ? { T3_BOOT_SERVICE_UNIT: "hive.service" } : {}),
               },
             }),
           ),
@@ -193,6 +235,7 @@ const makeHarness = Effect.fn("test.make_boot_service_harness")(function* (
     service,
     makeService,
     fs,
+    home,
     baseDir,
     statePath,
     commands,
@@ -255,7 +298,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
         );
         expect(yield* fs.readFileString(statePath)).toBe(before);
         expect(yield* fs.readFileString(plan.unitPath)).toBe(unit);
-        expect(commands).not.toContain("systemctl --user stop t3code.service");
+        expect(commands).not.toContain("systemctl --user stop hive.service");
       }),
   );
 
@@ -295,10 +338,52 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
     }),
   );
 
-  it.effect("installs, reports current state, and uninstalls", () =>
+  it.effect.each([
+    "unset",
+    "empty",
+    "relative",
+    "relocated",
+    "shell-only",
+    "manager-only",
+    "manager-unavailable",
+  ] as const)("installs, discovers, restarts, and uninstalls with $XDG_CONFIG_HOME %s", (setting) =>
     Effect.gen(function* () {
-      const { service, fs, statePath, timeouts, runtime } = yield* makeHarness();
+      const path = yield* Path.Path;
+      const fs = yield* FileSystem.FileSystem;
+      const configRoot = yield* fs.makeTempDirectoryScoped({ prefix: "t3-xdg-config-" });
+      const xdgConfigHome = {
+        unset: undefined,
+        empty: "",
+        relative: "relative-config",
+        relocated: path.join(configRoot, "config root"),
+        "shell-only": path.join(configRoot, "config root"),
+        "manager-only": undefined,
+        "manager-unavailable": path.join(configRoot, "config root"),
+      }[setting];
+      const managerXdgConfigHome =
+        setting === "shell-only"
+          ? ""
+          : setting === "manager-only"
+            ? path.join(configRoot, "config root")
+            : undefined;
+      const { service, makeService, home, statePath, timeouts, runtime, control } =
+        yield* makeHarness("linux", undefined, xdgConfigHome, managerXdgConfigHome);
+      const unitPath = path.join(
+        setting === "relocated" || setting === "manager-only" || setting === "manager-unavailable"
+          ? path.join(configRoot, "config root")
+          : path.join(home, ".config"),
+        "systemd",
+        "user",
+        "hive.service",
+      );
+      expect(yield* service.status).toMatchObject({ installed: false, unitPath });
       const plan = yield* service.install();
+      expect(plan.unitPath).toBe(unitPath);
+      if (setting === "manager-unavailable") {
+        control.failCommand =
+          "busctl --user --json=short get-property org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager UnitPath";
+      }
+      const discoveredService = yield* makeService();
 
       expect(parseServiceState(yield* fs.readFileString(statePath))).toEqual({
         protocol: SERVICE_LAUNCHER_PROTOCOL,
@@ -312,6 +397,12 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
         current: true,
         installedVersion: "1.2.3",
       });
+      expect(yield* discoveredService.status).toMatchObject({
+        installed: true,
+        current: true,
+        unitPath,
+      });
+      expect(yield* discoveredService.restart).toBe("restarted");
       const pendingState = JSON.stringify({
         protocol: SERVICE_LAUNCHER_PROTOCOL,
         activeVersion: "1.2.3",
@@ -325,11 +416,11 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
       });
       yield* fs.writeFileString(statePath, pendingState);
       expect((yield* service.status).current).toBe(false);
-      expect(yield* service.uninstall).toBe(true);
-      expect((yield* service.status).installed).toBe(false);
-      // The stop can block up to systemd's 90s TimeoutStopSec; the runner's
-      // 60s default would cancel it mid-shutdown.
-      expect(timeouts.get("systemctl --user disable --now t3code.service")).toEqual(
+      expect(yield* discoveredService.uninstall).toBe(true);
+      expect(yield* fs.exists(unitPath)).toBe(false);
+      expect((yield* discoveredService.status).installed).toBe(false);
+      // systemd can take 90s to stop, exceeding the runner's 60s default.
+      expect(timeouts.get("systemctl --user disable --now hive.service")).toEqual(
         Duration.seconds(120),
       );
     }),
@@ -402,9 +493,9 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
           ),
         ).toEqual(
           platform === "linux"
-            ? ["systemctl --user stop t3code.service", "systemctl --user restart t3code.service"]
+            ? ["systemctl --user stop hive.service", "systemctl --user restart hive.service"]
             : [
-                "launchctl bootout --wait gui/501/com.t3tools.t3code.service",
+                "launchctl bootout --wait gui/501/com.hive.desktop.service",
                 `launchctl bootstrap gui/501 ${plan.unitPath}`,
               ],
         );
@@ -534,15 +625,12 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
       const { service, commands, control, makeService } = yield* makeHarness();
       yield* service.install();
       const failure = yield* service
-        .withStopped(
-          Effect.suspend(() => Effect.fail(control.active ? "running" : "repair failed")),
-        )
+        .withStopped(Effect.failSync(() => (control.active ? "running" : "repair failed")))
         .pipe(Effect.flip);
       expect(failure).toBe("repair failed");
       expect(control.active).toBe(true);
 
-      // A failed stop skips the operation but still starts the service again.
-      control.failCommand = "systemctl --user stop t3code.service";
+      control.failCommand = "systemctl --user stop hive.service";
       let ran = false;
       const stopFailure = yield* service
         .withStopped(
@@ -559,30 +647,26 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
       expect(control.active).toBe(true);
       control.failCommand = undefined;
 
-      // An enabled unit that is not active (crash-looping in auto-restart, say)
-      // is still stopped for the repair and started again afterwards.
       control.active = false;
       commands.length = 0;
       yield* service.withStopped(Effect.sync(() => commands.push("repair")));
       expect(commands).toEqual([
-        "systemctl --user is-enabled t3code.service",
-        "systemctl --user is-active t3code.service",
-        "systemctl --user stop t3code.service",
+        "systemctl --user is-enabled hive.service",
+        "systemctl --user is-active hive.service",
+        "systemctl --user stop hive.service",
         "repair",
-        "systemctl --user restart t3code.service",
+        "systemctl --user restart hive.service",
       ]);
       expect(control.active).toBe(true);
-      // A running unit the user disabled is started again but stays disabled.
       control.enabled = false;
       yield* service.withStopped(Effect.void);
       expect(control).toMatchObject({ active: true, enabled: false });
-      // A unit that was neither enabled nor active stays stopped.
       control.active = false;
       control.enabled = false;
       commands.length = 0;
       yield* service.withStopped(Effect.sync(() => commands.push("repair")));
-      expect(commands).toContain("systemctl --user stop t3code.service");
-      expect(commands).not.toContain("systemctl --user restart t3code.service");
+      expect(commands).toContain("systemctl --user stop hive.service");
+      expect(commands).not.toContain("systemctl --user restart hive.service");
       expect(control.active).toBe(false);
       control.enabled = true;
       control.active = true;
@@ -596,17 +680,24 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
     }),
   );
 
-  it.effect("restart leaves a service that serves another T3 home alone", () =>
+  it.effect("restart and install leave a service that serves another T3 home alone", () =>
     Effect.gen(function* () {
-      const { service, fs, commands, makeService } = yield* makeHarness();
-      yield* service.install();
-      commands.length = 0;
+      const { service, fs, baseDir, commands, makeService } = yield* makeHarness();
+      const plan = yield* service.install();
+      const unit = yield* fs.readFileString(plan.unitPath);
       const path = yield* Path.Path;
       const otherHome = yield* fs.makeTempDirectoryScoped({ prefix: "t3-other-home-" });
 
-      const other = yield* makeService(undefined, "1.2.3", path.join(otherHome, ".t3"));
+      const other = yield* makeService(undefined, "1.2.3", path.join(otherHome, ".hive"));
+      commands.length = 0;
       expect(yield* other.restart).toBe("skipped");
-      expect(commands.filter((command) => command.startsWith("systemctl "))).toEqual([]);
+      const refused = yield* other.install().pipe(Effect.flip);
+      expect(refused._tag).toBe("BootServiceOtherBaseDirError");
+      // The CLI prints a user message without a stack trace.
+      expect(CliError.getUserMessage(refused)).toBe(refused.message);
+      expect(yield* fs.readFileString(plan.unitPath)).toBe(unit);
+      expect(commands).toEqual([]);
+      expect((yield* other.status).otherBaseDir).toBe(baseDir);
     }),
   );
 
@@ -629,7 +720,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
 
       expect(yield* fs.readFileString(statePath)).toBe(state);
       expect(yield* fs.readFileString(plan.unitPath)).toBe(unit);
-      expect(commands).not.toContain("systemctl --user stop t3code.service");
+      expect(commands).not.toContain("systemctl --user stop hive.service");
       expect(result).toMatchObject({ handedOff: true, logPath: plan.logPath });
       const handoffs = invocations.filter(({ command }) => command === "systemd-run");
       expect(handoffs).toHaveLength(1);
@@ -655,7 +746,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
       expect(yield* fs.readFileString(statePath)).toBe(state);
       expect(yield* fs.readFileString(plan.unitPath)).toBe(unit);
       expect(control.active).toBe(true);
-      expect(commands).not.toContain("systemctl --user stop t3code.service");
+      expect(commands).not.toContain("systemctl --user stop hive.service");
     }),
   );
 
@@ -682,8 +773,8 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
         const outcome = yield* inside.restart;
         expect(commands).toEqual([
           "systemctl --user daemon-reload",
-          "systemctl --user enable t3code.service",
-          "systemctl --user restart --no-block t3code.service",
+          "systemctl --user enable hive.service",
+          "systemctl --user restart --no-block hive.service",
         ]);
         expect(outcome).toBe("queued");
         expect(yield* fs.readFileString(statePath)).toBe(state);
@@ -705,9 +796,9 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
           (command) => command.startsWith("systemctl ") && !command.includes("show-environment"),
         ),
       ).toEqual([
-        "systemctl --user stop t3code.service",
+        "systemctl --user stop hive.service",
         "systemctl --user daemon-reload",
-        "systemctl --user restart t3code.service",
+        "systemctl --user restart hive.service",
       ]);
     }),
   );
@@ -738,10 +829,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
           commands.filter(
             (command) => command.startsWith("systemctl ") && !command.includes("show-environment"),
           ),
-        ).toEqual([
-          "systemctl --user stop t3code.service",
-          "systemctl --user restart t3code.service",
-        ]);
+        ).toEqual(["systemctl --user stop hive.service", "systemctl --user restart hive.service"]);
       }
     }),
   );
@@ -754,7 +842,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
 
       expect(
         plan.unitPath.endsWith(
-          path.join("Library", "LaunchAgents", "com.t3tools.t3code.service.plist"),
+          path.join("Library", "LaunchAgents", "com.hive.desktop.service.plist"),
         ),
       ).toBe(true);
       expect(yield* fs.readFileString(plan.unitPath)).toContain(
@@ -774,9 +862,8 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
       expect(yield* service.uninstall).toBe(true);
       expect((yield* service.status).installed).toBe(false);
       expect(commands.some((command) => command.startsWith("systemctl "))).toBe(false);
-      // A bootout can block up to the plist's 90s ExitTimeOut; the runner's
-      // 60s default would cancel it and let bootstrap race a loaded job.
-      expect(timeouts.get("launchctl bootout --wait gui/501/com.t3tools.t3code.service")).toEqual(
+      // launchd can take 90s to bootout; the runner's 60s default could let bootstrap race it.
+      expect(timeouts.get("launchctl bootout --wait gui/501/com.hive.desktop.service")).toEqual(
         Duration.seconds(120),
       );
     }),
@@ -817,6 +904,29 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
     }),
   );
 
+  // regression: #17532
+  it.effect("puts the runtime an update installs on the launch agent PATH", () =>
+    Effect.gen(function* () {
+      const { makeService, fs, baseDir, runtime } = yield* makeHarness("darwin");
+      const path = yield* Path.Path;
+      const previous = runtime.versionDir;
+      const installed = pinnedRuntimePaths(path, baseDir, "1.2.4", "darwin").versionDir;
+      // The 1.2.3 CLI, or the 1.2.3 service's own PATH, installs 1.2.4.
+      const updated = yield* makeService(
+        `/usr/bin:${previous}:/bin`,
+        "1.2.4",
+        undefined,
+        false,
+        runtime.entryPath,
+      );
+      const plan = yield* updated.install();
+
+      expect(yield* fs.readFileString(plan.unitPath)).toContain(
+        `    <key>PATH</key>\n    <string>/usr/bin:${installed}:/bin:/opt/homebrew/bin:/usr/local/bin:/usr/sbin:/sbin</string>`,
+      );
+    }),
+  );
+
   it.effect("drops PATH directories that cannot be represented in a launch agent plist", () =>
     Effect.gen(function* () {
       const { service, fs } = yield* makeHarness(
@@ -838,7 +948,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
     Effect.gen(function* () {
       const { service, control } = yield* makeHarness("darwin");
       yield* service.install();
-      control.failCommand = "launchctl bootout --wait gui/501/com.t3tools.t3code.service";
+      control.failCommand = "launchctl bootout --wait gui/501/com.hive.desktop.service";
 
       yield* service.install();
       expect((yield* service.status).current).toBe(true);
