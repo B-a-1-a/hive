@@ -148,8 +148,11 @@ const make = Effect.fn("desktop.environment.make")(function* (
   const homeDirectory = input.homeDirectory;
   const devServerUrl = config.devServerUrl;
   const isDevelopment = Option.isSome(devServerUrl);
-  const appDataDirectory =
-    input.platform === "win32"
+  // Test runs point a dev build at their own Electron profile instead of the developer's.
+  const devAppDataDirectory = isDevelopment ? config.devAppDataDirectory : Option.none<string>();
+  const appDataDirectory = Option.isSome(devAppDataDirectory)
+    ? devAppDataDirectory.value
+    : input.platform === "win32"
       ? Option.getOrElse(config.appDataDirectory, () =>
           path.join(homeDirectory, "AppData", "Roaming"),
         )

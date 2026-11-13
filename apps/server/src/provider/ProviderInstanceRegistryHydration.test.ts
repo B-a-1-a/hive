@@ -9,6 +9,7 @@ import {
 } from "@t3tools/contracts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it as effectIt } from "@effect/vitest";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Queue from "effect/Queue";
@@ -100,11 +101,12 @@ describe("deriveProviderInstanceConfigMap", () => {
 });
 
 describe("seedDevReplayInstance", () => {
-  const seed = (devUrl: URL | undefined) =>
+  const seed = (devUrl: URL | undefined, env: NodeJS.ProcessEnv = {}) =>
     Effect.gen(function* () {
       const config = yield* ServerConfig.ServerConfig;
       yield* seedDevReplayInstance().pipe(
         Effect.provideService(ServerConfig.ServerConfig, { ...config, devUrl }),
+        Effect.provideService(HostProcess.Environment, env),
       );
       const settings = yield* ServerSettingsService;
       return (yield* settings.getSettings).providerInstances[DEV_REPLAY_INSTANCE_ID];
@@ -144,6 +146,14 @@ describe("seedDevReplayInstance", () => {
           commandArgs: [expect.stringMatching(/scripts[/\\]dev-replay-agent\.ts$/)],
         });
       }),
+    ),
+  );
+
+  effectIt.effect("runs the agent with the Node a desktop dev launcher names", () =>
+    seed(undefined, { T3CODE_DEV_REPLAY_NODE: "/desktop/node" }).pipe(
+      Effect.map((instance) =>
+        expect(instance?.config).toMatchObject({ commandPath: "/desktop/node" }),
+      ),
     ),
   );
 });

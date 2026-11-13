@@ -68,6 +68,8 @@ await waitForResources({
 
 const childEnv = { ...process.env };
 delete childEnv.ELECTRON_RUN_AS_NODE;
+// The bundled dev backend seeds the free replay agent and runs it with this Node, not Electron.
+childEnv.T3CODE_DEV_REPLAY_NODE = process.execPath;
 const devProtocolClient = resolveDevProtocolClient();
 if (devProtocolClient) {
   childEnv.T3CODE_DESKTOP_APP_USER_MODEL_ID = devProtocolClient.appBundleId;

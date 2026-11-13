@@ -86,7 +86,8 @@ address. It does not use `localhost`, which some machines resolve to `::1` first
 `e2e run --help` lists the rest: `--grep`, `--watch`, `--last-failed`, `--changed-since`.
 
 Run one at a time per checkout: a run recreates the checkout's scenario T3 home and its `.e2e`
-output. Use a second worktree for a second run.
+output. A second run stops instead of deleting a home that a live run owns, or a folder no run
+made. Use a second worktree for a second run.
 
 ## Prove a fix
 

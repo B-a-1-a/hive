@@ -17,6 +17,7 @@ import * as Stream from "effect/Stream";
 import { Argument, Command } from "effect/cli";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
+import { HOME_MARKER, isPidAlive, protectedPaths, refuseToRecreate } from "./home-guard.ts";
 import { ScenarioError } from "./shell.ts";
 
 // The dev runner's web port is 5733 plus an offset. Mirror of BASE_WEB_PORT in dev-runner.ts.
@@ -38,31 +39,32 @@ const REAL_PROVIDERS = [
   "antigravity",
 ];
 
-// The server labels its environment with the host's name, probed through these commands.
-// Captures must not depend on, or show, the machine that made them.
-const HOST_LABEL_SHIM = `#!/bin/sh
-case "$*" in
-  "--pretty" | "--get ComputerName") echo "Scenario" ;;
-  *) for real in /usr/bin /usr/sbin /bin; do
-       [ -x "$real/$(basename "$0")" ] && exec "$real/$(basename "$0")" "$@"
-     done
-     exit 127 ;;
-esac
-`;
-
 const encodeSettings = Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown));
 
 const prepareHome = Effect.fn("startApp.prepareHome")(function* (home: string) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  yield* fs.remove(home, { recursive: true, force: true });
+  const runtimeMode = (yield* HostProcess.Environment).T3_SCENARIO_RUNTIME_MODE;
+  const resolved = yield* fs.realPath(home).pipe(Effect.orElseSucceed(() => path.resolve(home)));
+  const entries = yield* fs.readDirectory(resolved).pipe(Effect.orElseSucceed(() => undefined));
+  const marker = yield* fs
+    .readFileString(path.join(resolved, HOME_MARKER))
+    .pipe(Effect.orElseSucceed(() => ""));
+  const refusal = refuseToRecreate(
+    { home: resolved, entries, ownerPid: Number(marker) || undefined },
+    protectedPaths(yield* HostProcess.WorkingDirectory),
+    isPidAlive,
+  );
+  if (refusal !== undefined) return yield* new ScenarioError({ message: refusal });
+  yield* fs.remove(resolved, { recursive: true, force: true });
   yield* fs.makeDirectory(path.join(home, "userdata"), { recursive: true });
+  yield* fs.writeFileString(path.join(home, HOME_MARKER), String(process.pid));
   yield* fs.makeDirectory(path.join(home, "bin"));
-  for (const command of ["hostnamectl", "scutil"]) {
-    const shim = path.join(home, "bin", command);
-    yield* fs.writeFileString(shim, HOST_LABEL_SHIM);
-    yield* fs.chmod(shim, 0o755);
-  }
+  yield* fs.makeDirectory(path.join(home, "gh"));
+  yield* fs.writeFileString(
+    path.join(home, "gitconfig"),
+    "[user]\n\tname = Scenario\n\temail = scenario@example.invalid\n[commit]\n\tgpgsign = false\n",
+  );
   const noModel = path.join(home, "bin/no-model");
   yield* fs.writeFileString(noModel, "#!/bin/sh\necho 'scenarios run no model' >&2\nexit 1\n");
   yield* fs.chmod(noModel, 0o755);
@@ -70,6 +72,8 @@ const prepareHome = Effect.fn("startApp.prepareHome")(function* (home: string) {
     path.join(home, "userdata/settings.json"),
     yield* encodeSettings({
       defaultModelSelection: REPLAY,
+      // approval-required makes replayed approvals and questions wait for an answer.
+      ...(runtimeMode === undefined ? {} : { defaultRuntimeMode: runtimeMode }),
       providerInstances: Object.fromEntries(
         REAL_PROVIDERS.map((driver) => [
           driver,
@@ -126,10 +130,17 @@ const startApp = Effect.fn("startApp")(function* (input: {
   const checkout = yield* HostProcess.WorkingDirectory;
   const hostEnvironment = yield* HostProcess.Environment;
   yield* prepareHome(input.home);
+  const { GH_TOKEN: _gh, GITHUB_TOKEN: _github, ...hostWithoutTokens } = hostEnvironment;
   const env = {
-    ...hostEnvironment,
-    PATH: `${path.join(input.home, "bin")}:${hostEnvironment.PATH ?? ""}`,
+    ...hostWithoutTokens,
+    // Captures must not depend on, or show, the machine that made them.
+    T3CODE_ENVIRONMENT_LABEL: "Scenario",
     T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "0",
+    // The app's git and gh get their own config: no developer identity, hooks, signing,
+    // credential helpers, or GitHub login reach a test app.
+    GIT_CONFIG_GLOBAL: path.join(input.home, "gitconfig"),
+    GIT_CONFIG_NOSYSTEM: "1",
+    GH_CONFIG_DIR: path.join(input.home, "gh"),
   };
   const devRunner = (mode: string, args: ReadonlyArray<string>) => [
     "scripts/dev-runner.ts",
@@ -258,6 +269,10 @@ const command = Command.make(
 );
 
 if (import.meta.main) {
+  // A parent that pipes stdin is gone when the pipe closes, even after SIGKILL: stop with it.
+  if (process.env.T3_SCENARIO_EXIT_WITH_PARENT === "1") {
+    process.stdin.on("close", () => process.kill(process.pid, "SIGTERM")).resume();
+  }
   Command.run(command, { version: "0.0.0" }).pipe(
     Effect.scoped,
     Effect.provide([NodeServices.layer, NodeCrypto.layer, NetService.layer]),

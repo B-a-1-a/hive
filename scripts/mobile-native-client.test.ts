@@ -1,5 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
+import * as HostProcess from "@t3tools/shared/HostProcess";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -9,6 +10,7 @@ import {
   NativeClientError,
   prebuildAndroid,
   remoteBuildState,
+  remoteCache,
 } from "./mobile-native-client.ts";
 
 const caches = [".gradle/history", "app/.cxx/object"];
@@ -125,5 +127,29 @@ it("finds a Blacksmith build by its run title and reads its state", () => {
   assert.strictEqual(
     remoteBuildState([run("2026-11-09T12:01:00Z", "completed", "cancelled")], title, since),
     "failed",
+  );
+});
+
+it.layer(NodeServices.layer)("remoteCache", (it) => {
+  it.effect("stays off with a saved login until the run opts in", () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const home = yield* fs.makeTempDirectoryScoped({ prefix: "native-client-home-" });
+      const repo = yield* path.fromFileUrl(new URL("../", import.meta.url));
+      const { endpoint } = JSON.parse(
+        yield* fs.readFileString(path.join(repo, ".task-cache.json")),
+      ) as { endpoint: string };
+      yield* fs.makeDirectory(path.join(home, ".config/t3-task-cache"), { recursive: true });
+      yield* fs.writeFileString(
+        path.join(home, ".config/t3-task-cache/credentials.json"),
+        JSON.stringify({ [endpoint]: { name: "dev", token: "t" } }),
+      );
+      const withEnv = (env: NodeJS.ProcessEnv) =>
+        remoteCache(home).pipe(Effect.provideService(HostProcess.Environment, env));
+      assert.isNull(yield* withEnv({}));
+      assert.isNull(yield* withEnv({ T3_NATIVE_CLIENT_CACHE: "off" }));
+      assert.isNotNull(yield* withEnv({ T3_NATIVE_CLIENT_CACHE: "read" }));
+    }).pipe(Effect.scoped),
   );
 });
