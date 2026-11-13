@@ -404,7 +404,9 @@ export const prebuildAndroid = Effect.fn("nativeClient.prebuildAndroid")(functio
   );
 });
 
-const artifactNames = { ios: "T3CodeDev.app", android: "app-debug.apk" } as const;
+// Expo prebuild names the iOS workspace, scheme, and app after the dev variant's name, "Hive Dev".
+const IOS_PROJECT = "HiveDev";
+const artifactNames = { ios: `${IOS_PROJECT}.app`, android: "app-debug.apk" } as const;
 // R2 requires equal-sized parts and Workers cap request bodies at 100 MB.
 const partSize = 64 * 1024 * 1024;
 const RemoteCredentials = Schema.fromJsonString(
@@ -434,11 +436,16 @@ interface RemoteCache {
   readonly token: string;
 }
 
-/** The shared task-cache login (infra/task-cache/install.sh) also authorizes native clients. */
-const remoteCache = Effect.fn("nativeClient.remoteCache")(
+/**
+ * The shared task-cache login (infra/task-cache/install.sh) also authorizes native clients.
+ * Hive opts in with T3_NATIVE_CLIENT_CACHE=on or read: the endpoint, its telemetry, and the CI
+ * dispatch that needs it belong to T3 Code, so by default nothing leaves this machine.
+ */
+export const remoteCache = Effect.fn("nativeClient.remoteCache")(
   function* (home: string) {
     const environment = yield* HostProcess.Environment;
-    if (environment.T3_NATIVE_CLIENT_CACHE === "off") return null;
+    const mode = environment.T3_NATIVE_CLIENT_CACHE;
+    if (mode !== "on" && mode !== "read") return null;
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const { endpoint } = yield* decodeEndpoint(
@@ -698,6 +705,12 @@ const build = Effect.fn("nativeClient.build")(function* (
     true,
   ).pipe(Effect.asVoid);
   const onEas = platform === "ios" && !(yield* hasXcode);
+  // EAS builds upload this checkout to the Expo project in app.config.ts; Hive makes that opt-in.
+  if (onEas && (yield* HostProcess.Environment).T3_NATIVE_CLIENT_BUILD !== "eas")
+    return yield* new NativeClientError({
+      message:
+        "iOS builds need Xcode on macOS. Set T3_NATIVE_CLIENT_BUILD=eas to build on EAS instead.",
+    });
   if (platform === "android") yield* prebuildAndroid(mobile, prebuild);
   else if (!onEas) yield* prebuild;
   const staging = yield* fs.makeTempDirectory({
@@ -716,9 +729,9 @@ const build = Effect.fn("nativeClient.build")(function* (
         [
           "xcodebuild",
           "-workspace",
-          path.join(mobile, "ios/T3CodeDev.xcworkspace"),
+          path.join(mobile, `ios/${IOS_PROJECT}.xcworkspace`),
           "-scheme",
-          "T3CodeDev",
+          IOS_PROJECT,
           "-configuration",
           "Debug",
           "-destination",
