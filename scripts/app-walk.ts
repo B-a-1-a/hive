@@ -12,10 +12,12 @@ import { chromium, type Locator, type Page } from "playwright-core";
 import {
   brokenPage,
   type Control,
+  insideGitRepository,
   MISSING_BROWSER_HELP,
   OFFLINE_BROWSER_ARGS,
   PLATFORM,
   privacyWarnings,
+  renderedTheme,
   type SampleThread,
   scrollShots,
   seedSampleProjects,
@@ -181,6 +183,10 @@ const theme = args.theme === "dark" ? "dark" : "light";
 const runDir = NodePath.resolve(
   args.out ?? NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "hive-walk-")),
 );
+if (insideGitRepository(runDir)) {
+  console.error(`${runDir} is inside a git repository. Pick a folder outside any repository.`);
+  process.exit(2);
+}
 const captures = NodePath.join(runDir, "captures");
 NodeFS.rmSync(captures, { recursive: true, force: true });
 NodeFS.mkdirSync(captures, { recursive: true });
@@ -261,6 +267,7 @@ for (const stop of STOPS) {
       const files = await scrollShots(page, NodePath.join(captures, stop.id));
       row = {
         ...base,
+        theme: await renderedTheme(page),
         route,
         status: "ok",
         files: files.map((file) => NodePath.relative(runDir, file)),

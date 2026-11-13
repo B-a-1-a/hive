@@ -56,6 +56,19 @@ add({
       : `Codex sandbox "${sandbox}"${process.env.CODEX_SANDBOX_NETWORK_DISABLED === "1" ? " with network off" : ""}: expect no browser, no localhost, no sockets, and no writes outside the checkout and temp folders.`,
 });
 
+const installed = NodeFS.existsSync(
+  NodePath.join(import.meta.dirname, "node_modules/playwright-core/package.json"),
+);
+add({
+  name: "dependencies",
+  ok: installed,
+  required: true,
+  detail: installed ? "Installed." : "Dependencies are not installed in this checkout.",
+  alternatives: [
+    "If .hive/setup-running exists, wait for setup to finish; otherwise run `vp i` (ask the user if you may not install).",
+  ],
+});
+
 // The captures folder is also the browser service's job folder.
 const browserDir = serviceDir(values.dir);
 try {
@@ -94,9 +107,13 @@ if (surface !== "mobile") {
       name: "launchBrowser",
       ok: false,
       required: false,
-      detail: /Executable doesn't exist/.test(message)
-        ? "Chromium is not downloaded. Run: node scripts/node_modules/playwright-core/cli.js install --only-shell chromium"
-        : `This process cannot start Chromium: ${message}`,
+      detail: /Cannot find (package|module)/.test(message)
+        ? "Dependencies are not installed: wait for .hive/setup-running to finish, or run `vp i`."
+        : /Executable doesn't exist/.test(message)
+          ? "Chromium is not downloaded. Ask the user, or run: node scripts/node_modules/playwright-core/cli.js install --only-shell chromium"
+          : sandbox !== undefined
+            ? `The sandbox does not let this process start Chromium (${message}).`
+            : `This process cannot start Chromium: ${message}`,
       alternatives: [ALTERNATIVES.hostBrowser, ALTERNATIVES.widerMode, ALTERNATIVES.otherAgent],
     });
   }
@@ -285,6 +302,13 @@ const mark = (check: Check) =>
 process.stderr.write(
   `\n${checks.map((check) => `${mark(check)}  ${check.name}: ${check.detail}`).join("\n")}\n`,
 );
+if (failed.length === 0 && surface !== "mobile") {
+  process.stderr.write(
+    canLaunch
+      ? "\nOK: this process can start a browser.\n"
+      : "\nOK: use the host browser service (scripts/browser-job.ts); this process cannot start a browser or reach localhost.\n",
+  );
+}
 if (failed.length > 0) {
   const options = [...new Set(failed.flatMap((check) => check.alternatives ?? []))];
   process.stderr.write(

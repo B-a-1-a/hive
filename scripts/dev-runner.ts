@@ -869,6 +869,8 @@ export const runDevRunnerWithInput = Effect.fn("dev-runner.runDevRunnerWithInput
   });
 
   const args = [...(built ? BUILT_DEV_ARGS : MODE_ARGS[input.mode]), ...input.runArgs];
+  // A detached child on Windows opens its own console window.
+  const ownProcessGroup = (yield* HostProcess.Platform) !== "win32" && !NodeProcess.stdin.isTTY;
   const spawnCommand = yield* resolveSpawnCommand("vp", args, { env });
   const processContext = {
     mode: input.mode,
@@ -886,7 +888,7 @@ export const runDevRunnerWithInput = Effect.fn("dev-runner.runDevRunnerWithInput
     // In a terminal, Vite+ shares our process group so Ctrl+C reaches it directly.
     // Without one (agents, background jobs) a stop signal reaches only this runner,
     // so Vite+ gets its own group, which Effect stops whole when the runner exits.
-    detached: !NodeProcess.stdin.isTTY,
+    detached: ownProcessGroup,
     forceKillAfter: "1500 millis",
   }).pipe(
     Effect.mapError(

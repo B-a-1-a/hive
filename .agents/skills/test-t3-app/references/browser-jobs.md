@@ -23,8 +23,8 @@ node scripts/browser-job.ts my-job.json
 
 It waits for the result and prints the log. Exit codes: 0 done, 1 a step failed
 (the log lists the visible controls and saves `captures/<agent>/_last-error.png`),
-2 the job file is invalid, 3 no service is running (STOP and tell the user),
-4 no result after six minutes.
+2 the job file is invalid, 3 no service is running or it stopped during the job
+(STOP and tell the user; never restart it yourself), 4 no result after six minutes.
 
 ```json
 {
@@ -51,7 +51,10 @@ It waits for the result and prints the log. Exit codes: 0 done, 1 a step failed
   start of every job, so jobs start from the same layout. Server data is shared.
 - `viewport` and `colorScheme` are optional. At most 40 steps per job.
 - `goto`: `path` starts with `/`, or names a sample thread: `thread:git`,
-  `thread:plain`, `thread:question`, `thread:approval`.
+  `thread:plain`, `thread:question`, `thread:approval`. All agents share these
+  threads and the server's settings: do not answer the question or the approval,
+  and change back any server setting you change. The approval is cancelled a few
+  minutes after the service starts, so capture it early or ask for a fresh service.
 - Find an element with one of `role` plus `name`, `text`, `label`,
   `placeholder`, or `css`; add `exact`, `nth`, or `within` (a CSS selector).
   `click` and `hover` also take `x` and `y`. `click` takes `"button": "right"`

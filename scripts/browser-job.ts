@@ -58,7 +58,9 @@ const resultFile = NodePath.join(dir, "results", name);
 const deadline = Date.now() + WAIT_MS;
 for (;;) {
   if (NodeFS.existsSync(resultFile)) break;
-  if (!alive()) {
+  // After the machine sleeps, the service needs a moment to write its next heartbeat.
+  if (!alive()) await new Promise((resolve) => setTimeout(resolve, HEARTBEAT_MS * 2));
+  if (!NodeFS.existsSync(resultFile) && !alive()) {
     console.error(`The browser service stopped before finishing this job.\n${NO_SERVICE}`);
     process.exit(3);
   }
@@ -70,9 +72,14 @@ for (;;) {
 }
 const result = JSON.parse(NodeFS.readFileSync(resultFile, "utf8")) as {
   ok: boolean;
+  stopped?: boolean;
   log: Array<string>;
 };
 NodeFS.rmSync(resultFile, { force: true });
 console.log(result.log.join("\n"));
+if (result.stopped) {
+  console.error(`\nThe browser service stopped during this job.\n${NO_SERVICE}`);
+  process.exit(3);
+}
 console.log(`\nCaptures: ${NodePath.join(dir, "captures")}`);
 process.exit(result.ok ? 0 : 1);

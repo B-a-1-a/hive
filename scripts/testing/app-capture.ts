@@ -28,6 +28,9 @@ export const MISSING_BROWSER_HELP =
 /** Text the app shows instead of a page: a capture with one of these is an error, not coverage. */
 const BROKEN_PAGE_TEXT = [
   "Something went wrong.",
+  "Page not found",
+  "Loading messages...",
+  "Syncing messages...",
   "Hive failed to",
   "is not available for the selected target",
   "to change its settings.",
@@ -89,7 +92,9 @@ export async function settle(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await page
     .waitForFunction(
-      () => document.getAnimations().every((animation) => animation.playState !== "running"),
+      () =>
+        document.getAnimations().every((animation) => animation.playState !== "running") &&
+        !/(Loading|Syncing) messages\.\.\./.test(document.body.innerText),
       null,
       { timeout: SETTLE_MS },
     )
@@ -101,8 +106,26 @@ export async function brokenPage(page: Page): Promise<string | undefined> {
   if ((await page.locator("vite-error-overlay").count()) > 0) return "Vite error overlay";
   const text = await page.locator("body").innerText();
   const marker = BROKEN_PAGE_TEXT.find((candidate) => text.includes(candidate));
-  return marker === undefined ? undefined : `The page shows "${marker}"`;
+  if (marker !== undefined) return `The page shows "${marker}"`;
+  // An unknown path renders nothing beside the sidebar: count the text outside the app chrome.
+  const contentText = await page.evaluate(() => {
+    const chrome =
+      '[data-workspace-area="sidebar"], [data-workspace-area="settings-nav"], header, [hidden]';
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    let length = 0;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement;
+      if (!parent || parent.closest(chrome) || parent.offsetParent === null) continue;
+      length += node.textContent?.trim().length ?? 0;
+    }
+    return length;
+  });
+  return contentText < 20 ? "Nothing renders beside the sidebar" : undefined;
 }
+
+/** The theme the page shows, which an app setting can make differ from the browser's. */
+export const renderedTheme = (page: Page) =>
+  page.evaluate(() => (document.documentElement.classList.contains("dark") ? "dark" : "light"));
 
 /** Strings that would identify this machine or user in a capture. */
 export const privateStrings = () =>
@@ -124,7 +147,7 @@ export async function privacyWarnings(page: Page): Promise<Array<string>> {
  * Screenshots the viewport, then scrolls the largest scrollable area a screen at a time until
  * it stops moving, so long pages are covered and short ones are not shot twice.
  */
-export async function scrollShots(page: Page, base: string, limit = 8): Promise<Array<string>> {
+export async function scrollShots(page: Page, base: string, limit = 15): Promise<Array<string>> {
   const files: Array<string> = [];
   for (let index = 1; index <= limit; index++) {
     const file = index === 1 ? `${base}.png` : `${base}-${index}.png`;
@@ -137,6 +160,8 @@ export async function scrollShots(page: Page, base: string, limit = 8): Promise<
       for (const element of document.querySelectorAll("*")) {
         if (!/(auto|scroll)/.test(getComputedStyle(element).overflowY)) continue;
         if (element.scrollHeight - element.clientHeight < 40) continue;
+        // Narrow lists, such as the settings nav, are navigation, not the page's content.
+        if (element.clientWidth < innerWidth * 0.35) continue;
         const area = element.clientWidth * element.clientHeight;
         if (area > largestArea) [largest, largestArea] = [element, area];
       }
@@ -212,8 +237,12 @@ export async function startIsolatedApp(runDir: string): Promise<IsolatedApp> {
     {
       cwd: CHECKOUT,
       detached: PLATFORM !== "win32",
-      stdio: ["ignore", log, log],
-      env: { ...process.env, T3_SCENARIO_RUNTIME_MODE: "approval-required" },
+      stdio: ["pipe", log, log],
+      env: {
+        ...process.env,
+        T3_SCENARIO_RUNTIME_MODE: "approval-required",
+        T3_SCENARIO_EXIT_WITH_PARENT: "1",
+      },
     },
   );
   const stop = () => {

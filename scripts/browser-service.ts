@@ -17,6 +17,7 @@ import {
   MISSING_BROWSER_HELP,
   OFFLINE_BROWSER_ARGS,
   privacyWarnings,
+  renderedTheme,
   type SampleThread,
   scrollShots,
   seedSampleProjects,
@@ -24,6 +25,7 @@ import {
   startIsolatedApp,
   visibleControls,
 } from "./testing/app-capture.ts";
+import { isPidAlive } from "./scenarios/home-guard.ts";
 import { HEARTBEAT_MS, type Job, parseJob, serviceDir, type Step } from "./testing/browser-jobs.ts";
 
 const ACTION_MS = 8_000;
@@ -47,18 +49,33 @@ const writeAtomic = (file: string, content: string) => {
   NodeFS.renameSync(`${file}.tmp`, file);
 };
 
-try {
-  const existing = JSON.parse(NodeFS.readFileSync(paths.service, "utf8")) as {
-    pid: number;
-    heartbeatAt: number;
-  };
-  if (Date.now() - existing.heartbeatAt < HEARTBEAT_MS * 3) {
+// One service per folder. The lock is taken before anything starts, so two launches at once
+// cannot both serve the queue; a lock whose owner is gone is taken over.
+const lockFile = NodePath.join(dir, "service.lock");
+NodeFS.mkdirSync(dir, { recursive: true });
+const takeLock = () => {
+  try {
+    NodeFS.writeFileSync(lockFile, String(process.pid), { flag: "wx" });
+    return true;
+  } catch {
+    return false;
+  }
+};
+if (!takeLock()) {
+  const owner = Number(NodeFS.readFileSync(lockFile, "utf8"));
+  if (isPidAlive(owner)) {
     console.error(
-      `A browser service (pid ${existing.pid}) already serves ${dir}. Agents may be using it: do not restart it.`,
+      `A browser service (pid ${owner}) already serves ${dir}. Agents may be using it: do not restart it.`,
     );
     process.exit(2);
   }
-} catch {}
+  NodeFS.rmSync(lockFile, { force: true });
+  if (!takeLock()) {
+    console.error(`Another browser service is starting for ${dir}.`);
+    process.exit(2);
+  }
+}
+process.on("exit", () => NodeFS.rmSync(lockFile, { force: true }));
 for (const folder of [paths.jobs, paths.running, paths.results, paths.captures]) {
   NodeFS.mkdirSync(folder, { recursive: true });
 }
@@ -66,7 +83,7 @@ for (const folder of [paths.jobs, paths.running, paths.results, paths.captures])
 for (const name of NodeFS.readdirSync(paths.running)) {
   writeAtomic(
     NodePath.join(paths.results, name),
-    JSON.stringify({ ok: false, log: ["The browser service stopped during this job."] }),
+    JSON.stringify({ ok: false, stopped: true, log: [] }),
   );
   NodeFS.rmSync(NodePath.join(paths.running, name), { force: true });
 }
@@ -117,6 +134,14 @@ const shutdown = async (code: number) => {
   NodeFS.rmSync(paths.service, { force: true });
   await browser.close().catch(() => {});
   app.stop();
+  // The app's state is disposable; captures live in the service folder.
+  if (args.app === undefined) {
+    await Promise.race([
+      app.exited.catch(() => {}),
+      new Promise((resolve) => setTimeout(resolve, 10_000)),
+    ]);
+    NodeFS.rmSync(runDir, { recursive: true, force: true });
+  }
   process.exit(code);
 };
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
@@ -126,6 +151,8 @@ app.exited.catch((error: Error) => {
   console.error(error.message);
   void shutdown(1);
 });
+
+const jobPages = new Map<string, Page>();
 
 /** One browser context per agent: warm module cache, but no storage shared between agents. */
 const contexts = new Map<string, BrowserContext>();
@@ -178,6 +205,7 @@ async function play(job: Job, name: string): Promise<{ ok: boolean; log: Array<s
   const log: Array<string> = [];
   const context = await contextFor(job);
   const page = await context.newPage();
+  jobPages.set(name, page);
   page.setDefaultTimeout(ACTION_MS);
   const pageErrors: Array<string> = [];
   page.on("pageerror", (error) => pageErrors.push(error.message.split("\n")[0] ?? ""));
@@ -268,7 +296,7 @@ async function play(job: Job, name: string): Promise<{ ok: boolean; log: Array<s
             const broken = await brokenPage(page);
             if (broken !== undefined) throw new Error(`${broken}; not saved as ${id}.`);
             if (pageErrors.length > 0) throw new Error(`Page errors: ${pageErrors.join("; ")}`);
-            const files = await scrollShots(page, NodePath.join(outDir, id), step.scroll ? 8 : 1);
+            const files = await scrollShots(page, NodePath.join(outDir, id), step.scroll ? 15 : 1);
             const controls = await page.evaluate(visibleControls);
             const privacy = await privacyWarnings(page);
             const row = {
@@ -279,7 +307,7 @@ async function play(job: Job, name: string): Promise<{ ok: boolean; log: Array<s
               route: new URL(page.url()).pathname,
               files: files.map((file) => NodePath.relative(dir, file)),
               viewport: `${job.viewport.width}x${job.viewport.height}`,
-              theme: job.colorScheme,
+              theme: await renderedTheme(page),
               controls,
               ...(privacy.length > 0 ? { privacy } : {}),
             };
@@ -307,6 +335,7 @@ async function play(job: Job, name: string): Promise<{ ok: boolean; log: Array<s
     }
     return { ok: true, log };
   } finally {
+    jobPages.delete(name);
     await page.close().catch(() => {});
     log.unshift(`job ${name} (${job.agent})`);
   }
@@ -334,15 +363,28 @@ const scan = () => {
     if (busyAgents.has(job.agent)) continue;
     busyAgents.add(job.agent);
     NodeFS.renameSync(NodePath.join(paths.jobs, name), NodePath.join(paths.running, name));
-    const timeout = new Promise<{ ok: boolean; log: Array<string> }>((resolve) =>
-      setTimeout(
-        () => resolve({ ok: false, log: [`Job ${name} took over ${JOB_MS / 60_000} min.`] }),
-        JOB_MS,
-      ),
-    );
-    void Promise.race([play(job, name), timeout])
-      .catch((error: Error) => ({ ok: false, log: [`Job ${name} crashed: ${error.message}`] }))
-      .then((result) => {
+    const running = play(job, name).catch((error: Error) => ({
+      ok: false,
+      log: [`Job ${name} crashed: ${error.message}`],
+    }));
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<"timeout">((resolve) => {
+      timer = setTimeout(() => resolve("timeout"), JOB_MS);
+    });
+    void Promise.race([running, timeout])
+      .then(async (outcome) => {
+        clearTimeout(timer);
+        if (outcome !== "timeout") return outcome;
+        // Closing the job's page ends its steps, so it cannot write after its result.
+        await jobPages
+          .get(name)
+          ?.close()
+          .catch(() => {});
+        await running;
+        return { ok: false, log: [`Job ${name} took over ${JOB_MS / 60_000} min.`] };
+      })
+      .then((played) => {
+        const result = stopping ? { ok: false, stopped: true, log: played.log } : played;
         writeAtomic(NodePath.join(paths.results, name), JSON.stringify(result));
         NodeFS.rmSync(NodePath.join(paths.running, name), { force: true });
         busyAgents.delete(job.agent);
