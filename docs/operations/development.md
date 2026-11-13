@@ -73,13 +73,13 @@ Running `vp run dev` through an agent's own shell tool does not attach it to thi
 ### State and ports
 
 Linked worktrees default to their own `.hive/userdata`, even when `T3CODE_HOME` is set.
-The main checkout defaults to `~/.t3/dev`. An explicit `--home-dir` wins in both cases.
+The main checkout defaults to `~/.hive/dev`. An explicit `--home-dir` wins in both cases.
 The first start in a worktree seeds its empty database from a read-only copy of
-`~/.t3/userdata/statev2.sqlite` if the source is at most 500 MiB. Larger sources warn
+`~/.hive/userdata/statev2.sqlite` if the source is at most 500 MiB. Larger sources warn
 and dev starts with an empty database. `--no-seed` or `T3CODE_DEV_SEED=0` skips seeding.
 To copy a larger source, run `vp run migrate-dev-db` with dev stopped. It may use
 substantial disk space before pruning.
-Never run a development server against the live `~/.t3/userdata`.
+Never run a development server against the live `~/.hive/userdata` or `~/.t3/userdata`.
 See [test data](../../AGENTS.md#test-data) for copying a consistent database snapshot.
 
 Read ports from the `[dev-runner]` output. Worktrees derive stable preferences from their paths,
@@ -92,8 +92,8 @@ different preference when needed.
 [dev-replay-agent.ts](../../apps/server/scripts/dev-replay-agent.ts). It plays recorded
 ACP transcripts with simulated streaming, so the real adapter, orchestration, and UI run
 without a paid model. Each scenario is a model, and each prompt plays the next recorded turn.
-Bundled servers, including desktop dev, skip it because they have no agent script.
-Dev servers add it back on start, so turn it off in Settings instead of removing it.
+Desktop dev registers it too and runs it with the Node that launched Electron. Dev servers add
+it back on start, so turn it off in Settings instead of removing it.
 To add a scenario, point a `SCENARIOS` entry at a generic ACP replay fixture
 (`registry_transcript.ndjson`) or a file in [dev-replay](../../apps/server/scripts/dev-replay).
 The agent replays session updates, permission requests, and questions. It drops session setup

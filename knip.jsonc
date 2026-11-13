@@ -37,6 +37,11 @@
         "e2e.config.ts",
         "prove-scenario.ts",
         "scenarios/*.ts",
+        // Test tooling that agents and contributors run directly (see the test-t3-app skill).
+        "app-walk.ts",
+        "browser-job.ts",
+        "browser-service.ts",
+        "test-preflight.ts",
         "setup-worktree.ts",
         "sign-macos.ts",
         "prepare-server-compile-cache.cjs",
