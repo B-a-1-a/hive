@@ -1,10 +1,11 @@
 # Product usage data
 
-The T3 Code server sends product usage events to T3 Code's own endpoint at `ingest.t3.codes`,
-associated with a hashed account or installation identifier. To count how many installations one person
+Hive sends no product usage events unless whoever runs the server sets both
+`T3CODE_POSTHOG_KEY` and `T3CODE_POSTHOG_HOST`. Nothing is ever sent to T3 Code. When both are
+set, the server sends events to that PostHog project, associated with a hashed account or
+installation identifier, and the Welcome page says so. To count how many installations one person
 uses, the server also sends hashed account identifiers: your T3 Connect account, your OpenAI and
-Claude accounts when you are signed in, and a random identifier for each device that connects. The endpoint keeps a copy of each
-event and forwards events to PostHog. Events include the provider, model, reasoning effort,
+Claude accounts when you are signed in, and a random identifier for each device that connects. Events include the provider, model, reasoning effort,
 permission mode, turn and request results, duration, release channel, and token counts when
 available. Child-agent token counts are reported separately from the main agent's. Model names
 are sent only when they appear in a provider's public model list.

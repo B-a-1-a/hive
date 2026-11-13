@@ -129,6 +129,7 @@ const layerAnalytics = Layer.effectContext(
           record: (event, properties) =>
             Ref.update(recorded, (events) => [...events, { event, ...properties }]),
           flush: Effect.void,
+          enabled: Effect.succeed(true),
           recordOwners: () => Effect.void,
         }),
       ),

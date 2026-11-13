@@ -1,4 +1,4 @@
-// T3 ingest retains events and forwards to PostHog; UUIDs deduplicate retries there.
+// Sends PostHog batches to the operator-configured endpoint; UUIDs deduplicate retries there.
 import * as HostProcess from "@t3tools/shared/HostProcess";
 import type { ClientOs } from "@t3tools/contracts";
 import * as Clock from "effect/Clock";
@@ -65,12 +65,9 @@ function retryDelayMs(failures: number, random: number): number {
 }
 
 const TelemetryEnvConfig = Config.all({
-  posthogKey: Config.String("T3CODE_POSTHOG_KEY").pipe(
-    Config.withDefault("phc_XOWci4oZP4VvLiEyrFqkFjP4CZn55mjYYBMREK5Wd6m"),
-  ),
-  posthogHost: Config.String("T3CODE_POSTHOG_HOST").pipe(
-    Config.withDefault("https://ingest.t3.codes"),
-  ),
+  // No defaults: Hive sends nothing until its operator names their own PostHog project.
+  posthogKey: Config.String("T3CODE_POSTHOG_KEY").pipe(Config.option),
+  posthogHost: Config.String("T3CODE_POSTHOG_HOST").pipe(Config.option),
   enabled: Config.Boolean("T3CODE_TELEMETRY_ENABLED").pipe(Config.withDefault(true)),
   flushBatchSize: Config.Number("T3CODE_TELEMETRY_FLUSH_BATCH_SIZE").pipe(Config.withDefault(20)),
   maxBufferedEvents: Config.Number("T3CODE_TELEMETRY_MAX_BUFFERED_EVENTS").pipe(
@@ -88,6 +85,9 @@ export class AnalyticsService extends Context.Service<
     ) => Effect.Effect<void>;
 
     readonly flush: Effect.Effect<void>;
+
+    /** Whether events are currently sent anywhere; clients show the usage-data notice from it. */
+    readonly enabled: Effect.Effect<boolean>;
 
     /**
      * Records `install.owner_observed` for each owner of this install that the
@@ -120,6 +120,10 @@ function serverOsFromNodePlatform(platform: string): ClientOs {
 /** @public */
 export const make = Effect.gen(function* () {
   const telemetryConfig = yield* TelemetryEnvConfig;
+  const destination = Option.all({
+    key: Option.filter(telemetryConfig.posthogKey, (key) => key.trim() !== ""),
+    host: Option.filter(telemetryConfig.posthogHost, (host) => host.trim() !== ""),
+  });
   const hostEnvironment = yield* HostProcess.Environment;
   const awaitingShellConsent = hostEnvironment.T3CODE_DESKTOP_SHELL_DISCOVERY_PENDING === "1";
   // A managed policy can switch analytics off over the environment, never on.
@@ -127,7 +131,8 @@ export const make = Effect.gen(function* () {
     ManagedPolicy.deniedBy(yield* ManagedPolicy.ManagedPolicy, "telemetry") === undefined;
   // A cached PATH does not establish consent from the current login shell.
   const telemetryEnabled = Effect.suspend(() => {
-    if (!telemetryConfig.enabled || !policyAllows) return Effect.succeed(false);
+    if (!telemetryConfig.enabled || !policyAllows || Option.isNone(destination))
+      return Effect.succeed(false);
     if (!awaitingShellConsent) return Effect.succeed(true);
     if (hostEnvironment.T3CODE_DESKTOP_SHELL_DISCOVERY_PENDING === "1")
       return Effect.succeed(false);
@@ -199,10 +204,10 @@ export const make = Effect.gen(function* () {
   const sendBatch = Effect.fn("AnalyticsService.sendBatch")(function* (
     events: ReadonlyArray<BufferedAnalyticsEvent>,
   ) {
-    if (!(yield* telemetryEnabled) || !distinctId) return;
+    if (!(yield* telemetryEnabled) || !distinctId || Option.isNone(destination)) return;
 
     const payload = {
-      api_key: telemetryConfig.posthogKey,
+      api_key: destination.value.key,
       batch: events.map((event) => ({
         uuid: event.uuid,
         event: event.event,
@@ -227,7 +232,7 @@ export const make = Effect.gen(function* () {
       })),
     };
 
-    yield* HttpClientRequest.post(`${telemetryConfig.posthogHost}/batch/`).pipe(
+    yield* HttpClientRequest.post(`${destination.value.host}/batch/`).pipe(
       HttpClientRequest.bodyJson(payload),
       Effect.flatMap(httpClient.execute),
       Effect.flatMap(HttpClientResponse.filterStatusOk),
@@ -358,7 +363,7 @@ export const make = Effect.gen(function* () {
     flush.pipe(Effect.timeout(SHUTDOWN_FLUSH_TIMEOUT), Effect.ignore),
   );
 
-  return AnalyticsService.of({ record, flush, recordOwners });
+  return AnalyticsService.of({ record, flush, enabled: telemetryEnabled, recordOwners });
 });
 
 export const layer = Layer.effect(AnalyticsService, make);
