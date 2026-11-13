@@ -182,6 +182,12 @@ const resolveFriendlyHostLabel = Effect.fn("resolveFriendlyHostLabel")(function*
 export const resolveServerEnvironmentLabel = Effect.fn("resolveServerEnvironmentLabel")(function* (
   input: ResolveServerEnvironmentLabelInput,
 ) {
+  // Test runs name the environment so captures never show the machine that made them.
+  const override = normalizeLabel((yield* HostProcess.Environment).T3CODE_ENVIRONMENT_LABEL);
+  if (override) {
+    return override;
+  }
+
   const friendlyHostLabel = yield* resolveFriendlyHostLabel();
   if (friendlyHostLabel) {
     return friendlyHostLabel;

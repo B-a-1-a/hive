@@ -9,21 +9,29 @@ import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 
 import { APP_DIR, T3_HOME } from "../e2e.config.ts";
-import { run } from "./shell.ts";
+import { run, ScenarioError } from "./shell.ts";
 
 export interface T3State {
-  /** Creates a git repository holding `files` and adds it as a project. Returns its path. */
-  readonly project: (title: string, files?: Readonly<Record<string, string>>) => Promise<string>;
+  /**
+   * Creates a git repository holding `files` and adds it as a project. Returns its path.
+   * `git: false` makes a plain folder instead.
+   */
+  readonly project: (
+    title: string,
+    files?: Readonly<Record<string, string>>,
+    options?: { readonly git?: boolean },
+  ) => Promise<string>;
   /**
    * Starts a thread in a project and plays one replayed turn per message before returning.
    * `model` is a dev replay recording: showcase, todo-list, approval, question, multi-turn.
+   * Returns the thread id.
    */
   readonly thread: (input: {
     readonly project: string;
     readonly title: string;
     readonly messages: ReadonlyArray<string>;
     readonly model?: string;
-  }) => Promise<void>;
+  }) => Promise<string>;
 }
 
 export interface T3 extends T3State {
@@ -38,6 +46,30 @@ export const runPromise = <A, E>(effect: Effect.Effect<A, E, NodeServices.NodeSe
 const decodeLaunched = Schema.decodeUnknownEffect(
   Schema.fromJsonString(Schema.Struct({ threadId: Schema.String })),
 );
+
+/**
+ * A fixture repository with one commit, made without the developer's Git config: their hooks,
+ * templates, and commit signing would run here otherwise.
+ */
+export const initRepository = Effect.fn("scenario.initRepository")(function* (cwd: string) {
+  const hostEnvironment = yield* HostProcess.Environment;
+  const env = {
+    PATH: hostEnvironment.PATH,
+    HOME: hostEnvironment.HOME,
+    GIT_CONFIG_NOSYSTEM: "1",
+    GIT_CONFIG_GLOBAL: (yield* HostProcess.Platform) === "win32" ? "NUL" : "/dev/null",
+  };
+  const git = (args: ReadonlyArray<string>) => run("git", args, { cwd, env });
+  const config = ["-c", "user.name=Scenario", "-c", "user.email=scenario@example.invalid"].concat([
+    "-c",
+    "commit.gpgsign=false",
+    "-c",
+    "core.hooksPath=.git/no-hooks",
+  ]);
+  yield* git(["init", "--quiet", "--template=", "--initial-branch=main"]);
+  yield* git(["add", "--all"]);
+  yield* git([...config, "commit", "--quiet", "--message", "Initial commit"]);
+});
 
 /** State for the server on `home`, made through the app's own CLI: real events, not inserted rows. */
 export function makeState(home: string, env: NodeJS.ProcessEnv = {}) {
@@ -61,6 +93,7 @@ export function makeState(home: string, env: NodeJS.ProcessEnv = {}) {
   const project = Effect.fn("scenario.project")(function* (
     title: string,
     files: Readonly<Record<string, string>>,
+    options: { readonly git?: boolean } = {},
   ) {
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
@@ -72,14 +105,14 @@ export function makeState(home: string, env: NodeJS.ProcessEnv = {}) {
     });
     const workspace = path.join(parent, title);
     for (const [file, content] of Object.entries({ "README.md": "", ...files })) {
-      yield* fs.makeDirectory(path.dirname(path.join(workspace, file)), { recursive: true });
-      yield* fs.writeFileString(path.join(workspace, file), content);
+      const target = path.join(workspace, file);
+      if (path.relative(parent, target).startsWith("..") || path.isAbsolute(file)) {
+        return yield* new ScenarioError({ message: `Fixture path leaves its folder: ${file}` });
+      }
+      yield* fs.makeDirectory(path.dirname(target), { recursive: true });
+      yield* fs.writeFileString(target, content);
     }
-    const git = (args: ReadonlyArray<string>) => run("git", args, { cwd: workspace });
-    const author = ["-c", "user.name=Scenario", "-c", "user.email=scenario@example.invalid"];
-    yield* git(["init", "--quiet", "--initial-branch=main"]);
-    yield* git(["add", "--all"]);
-    yield* git([...author, "commit", "--quiet", "--message", "Initial commit"]);
+    if (options.git !== false) yield* initRepository(workspace);
     yield* cli(["project", "add", workspace, "--title", title]);
     projects.push(workspace);
     return workspace;
@@ -99,12 +132,13 @@ export function makeState(home: string, env: NodeJS.ProcessEnv = {}) {
     const started = yield* turn(["start", input.project, first, "--title", input.title, ...replay]);
     const { threadId } = yield* decodeLaunched(started.stdout);
     for (const message of rest) yield* turn(["send", threadId, message]);
+    return threadId;
   });
 
   return {
     cli,
     state: {
-      project: (title, files = {}) => runPromise(project(title, files)),
+      project: (title, files = {}, options = {}) => runPromise(project(title, files, options)),
       thread: (input) => runPromise(thread(input)),
     } satisfies T3State,
     // The server outlives the test, so the next one must not see this one's projects.

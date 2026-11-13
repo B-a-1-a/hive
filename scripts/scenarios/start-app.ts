@@ -17,6 +17,7 @@ import * as Stream from "effect/Stream";
 import { Argument, Command } from "effect/cli";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 
+import { HOME_MARKER, isPidAlive, protectedPaths, refuseToRecreate } from "./home-guard.ts";
 import { ScenarioError } from "./shell.ts";
 
 // The dev runner's web port is 5733 plus an offset. Mirror of BASE_WEB_PORT in dev-runner.ts.
@@ -38,31 +39,27 @@ const REAL_PROVIDERS = [
   "antigravity",
 ];
 
-// The server labels its environment with the host's name, probed through these commands.
-// Captures must not depend on, or show, the machine that made them.
-const HOST_LABEL_SHIM = `#!/bin/sh
-case "$*" in
-  "--pretty" | "--get ComputerName") echo "Scenario" ;;
-  *) for real in /usr/bin /usr/sbin /bin; do
-       [ -x "$real/$(basename "$0")" ] && exec "$real/$(basename "$0")" "$@"
-     done
-     exit 127 ;;
-esac
-`;
-
 const encodeSettings = Schema.encodeEffect(Schema.fromJsonString(Schema.Unknown));
 
 const prepareHome = Effect.fn("startApp.prepareHome")(function* (home: string) {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  yield* fs.remove(home, { recursive: true, force: true });
+  const runtimeMode = (yield* HostProcess.Environment).T3_SCENARIO_RUNTIME_MODE;
+  const resolved = yield* fs.realPath(home).pipe(Effect.orElseSucceed(() => path.resolve(home)));
+  const entries = yield* fs.readDirectory(resolved).pipe(Effect.orElseSucceed(() => undefined));
+  const marker = yield* fs
+    .readFileString(path.join(resolved, HOME_MARKER))
+    .pipe(Effect.orElseSucceed(() => ""));
+  const refusal = refuseToRecreate(
+    { home: resolved, entries, ownerPid: Number(marker) || undefined },
+    protectedPaths(yield* HostProcess.WorkingDirectory),
+    isPidAlive,
+  );
+  if (refusal !== undefined) return yield* new ScenarioError({ message: refusal });
+  yield* fs.remove(resolved, { recursive: true, force: true });
   yield* fs.makeDirectory(path.join(home, "userdata"), { recursive: true });
+  yield* fs.writeFileString(path.join(home, HOME_MARKER), String(process.pid));
   yield* fs.makeDirectory(path.join(home, "bin"));
-  for (const command of ["hostnamectl", "scutil"]) {
-    const shim = path.join(home, "bin", command);
-    yield* fs.writeFileString(shim, HOST_LABEL_SHIM);
-    yield* fs.chmod(shim, 0o755);
-  }
   const noModel = path.join(home, "bin/no-model");
   yield* fs.writeFileString(noModel, "#!/bin/sh\necho 'scenarios run no model' >&2\nexit 1\n");
   yield* fs.chmod(noModel, 0o755);
@@ -70,6 +67,8 @@ const prepareHome = Effect.fn("startApp.prepareHome")(function* (home: string) {
     path.join(home, "userdata/settings.json"),
     yield* encodeSettings({
       defaultModelSelection: REPLAY,
+      // approval-required makes replayed approvals and questions wait for an answer.
+      ...(runtimeMode === undefined ? {} : { defaultRuntimeMode: runtimeMode }),
       providerInstances: Object.fromEntries(
         REAL_PROVIDERS.map((driver) => [
           driver,
@@ -128,7 +127,8 @@ const startApp = Effect.fn("startApp")(function* (input: {
   yield* prepareHome(input.home);
   const env = {
     ...hostEnvironment,
-    PATH: `${path.join(input.home, "bin")}:${hostEnvironment.PATH ?? ""}`,
+    // Captures must not depend on, or show, the machine that made them.
+    T3CODE_ENVIRONMENT_LABEL: "Scenario",
     T3CODE_AUTO_BOOTSTRAP_PROJECT_FROM_CWD: "0",
   };
   const devRunner = (mode: string, args: ReadonlyArray<string>) => [
