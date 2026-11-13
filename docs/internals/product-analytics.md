@@ -134,11 +134,13 @@ repeating the call's outcome and duration, so event counts are not call counts.
 
 ## Delivery
 
-The server sends batches to the ingest endpoint at `ingest.t3.codes`, which archives
-every event and forwards some of them to PostHog. A send can fail after the endpoint
-has stored the batch, so every retry is a copy.
+Hive has no default destination. The server sends PostHog `/batch/` requests only when
+`T3CODE_POSTHOG_KEY` and `T3CODE_POSTHOG_HOST` are both set, and reports that in
+`ServerConfig.productAnalytics` so clients show the usage-data notice only when it is true.
+Never restore upstream's T3 key or `ingest.t3.codes` default. A send can fail after the
+endpoint has stored the batch, so every retry is a copy.
 [Delivery](../../apps/server/src/telemetry/AnalyticsService.ts) gives each event a
-uuid when it is recorded (the endpoint rejects events without one), backs off after
+uuid when it is recorded (PostHog deduplicates retries by it), backs off after
 a failed send, and drops a batch after a few tries. Without these limits, one stuck
 batch was sent every second for days.
 
