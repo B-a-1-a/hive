@@ -72,4 +72,18 @@ describe("DesktopEnvironment", () => {
       assert.equal(production.stateDir, "/Users/alice/.hive/userdata");
     }),
   );
+
+  it.effect("moves only a development profile to the test app data directory", () =>
+    Effect.gen(function* () {
+      const override = { T3CODE_DESKTOP_DEV_APP_DATA_DIR: "/tmp/walk/electron" };
+      const development = yield* makeEnvironment(
+        {},
+        { ...override, VITE_DEV_SERVER_URL: "http://localhost:5173" },
+      );
+      const production = yield* makeEnvironment({}, override);
+
+      assert.equal(development.appDataDirectory, "/tmp/walk/electron");
+      assert.equal(production.appDataDirectory, "/Users/alice/Library/Application Support");
+    }),
+  );
 });

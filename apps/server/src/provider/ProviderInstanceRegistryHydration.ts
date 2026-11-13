@@ -87,19 +87,29 @@ export const DEV_REPLAY_INSTANCE_ID = ProviderInstanceId.make("devReplay");
 
 /**
  * Dev servers run from source keep a free ACP agent that replays recorded turns, so UI checks
- * need no paid model. Bundled servers, such as desktop dev, have no agent script and skip it.
+ * need no paid model. Desktop dev runs the bundled server under Electron, so its launcher names
+ * a Node binary in T3CODE_DEV_REPLAY_NODE; Electron itself would open a window, not run the agent.
  */
 export const seedDevReplayInstance = Effect.fn(
   "ProviderInstanceRegistryHydration.seedDevReplayInstance",
 )(function* () {
   const config = yield* ServerConfig.ServerConfig;
-  if (config.devUrl === undefined) return;
+  const replayNode = (yield* HostProcess.Environment).T3CODE_DEV_REPLAY_NODE?.trim() || undefined;
+  if (config.devUrl === undefined && replayNode === undefined) return;
   const path = yield* Path.Path;
-  const agentPath = yield* path.fromFileUrl(
-    new URL("../../scripts/dev-replay-agent.ts", import.meta.url),
-  );
-  if (!(yield* (yield* FileSystem.FileSystem).exists(agentPath))) return;
-  const commandPath = yield* HostProcess.ExecutablePath;
+  const fs = yield* FileSystem.FileSystem;
+  // From src/provider in a source run, from dist/bin.mjs in a bundled one.
+  const candidates = ["../../scripts/dev-replay-agent.ts", "../scripts/dev-replay-agent.ts"];
+  let agentPath: string | undefined;
+  for (const candidate of candidates) {
+    const resolved = yield* path.fromFileUrl(new URL(candidate, import.meta.url));
+    if (yield* fs.exists(resolved)) {
+      agentPath = resolved;
+      break;
+    }
+  }
+  if (agentPath === undefined) return;
+  const commandPath = replayNode ?? (yield* HostProcess.ExecutablePath);
   const serverSettings = yield* Settings.ServerSettingsService;
   const existing = (yield* serverSettings.getSettings).providerInstances[DEV_REPLAY_INSTANCE_ID];
   const existingConfig = existing?.config as Record<string, unknown> | undefined;
